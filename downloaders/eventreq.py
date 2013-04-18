@@ -176,7 +176,8 @@ def _add_proxy(session, config):
     if None in (config.proxy_url, config.proxy_port):
         return
 
-    protocol, host = urllib.splittype(config.proxy_url)
+    protocol, remainder = urllib.splittype(config.proxy_url)
+    host, remainder = urllib.splithost(remainder)
     url = ':'.join((host, str(config.proxy_port)))
 
     if config.proxy_username is not None:
