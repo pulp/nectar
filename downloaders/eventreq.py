@@ -22,7 +22,6 @@ from logging import getLogger
 
 import requests
 
-from pulp.common import dateutils
 from pulp.common.download.downloaders.base import PulpDownloader
 from pulp.common.download.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
@@ -78,7 +77,7 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
         session = build_session(self.config)
 
         def _session_generator():
-            yield session
+            while True: yield session
 
         for report in pool.imap(self._fetch, request_list, _session_generator()):
             if report.state is DOWNLOAD_SUCCEEDED:
@@ -91,8 +90,6 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
         report.download_started()
         self.fire_download_started(report)
 
-        last_update_time = report.start_time
-
         try:
             if self.is_canceled:
                 raise DownloadCancelled(request.url)
@@ -103,6 +100,8 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
                 raise DownloadFailed(request.url, response.status_code, response.reason)
 
             file_handle = request.initialize_file_handle()
+            last_update_time = datetime.datetime.now()
+            self.fire_download_progress(report) # guarantee 1 report at the beginning
 
             for chunk in response.iter_content(self.buffer_size):
 
@@ -114,6 +113,8 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
 
                 last_update_time = self._interval_progress_report(last_update_time, report)
 
+            self.fire_download_progress(report) # guarantee 1 report at the end
+
         except DownloadCancelled, e:
             _LOG.debug(str(e))
             report.download_canceled()
@@ -123,6 +124,8 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
             report.download_failed()
+
+        # XXX (jconnor-2013-04-18) handle requests-specific exceptions?
 
         except Exception, e:
             _LOG.exception(e)
@@ -137,7 +140,7 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
         return report
 
     def _interval_progress_report(self, last_update_time, report):
-        now = datetime.datetime.now(tz=dateutils.utc_tz())
+        now = datetime.datetime.now()
 
         if now - last_update_time < self.progress_interval:
             return last_update_time
@@ -149,7 +152,7 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
 
 def build_session(config):
     session = requests.Session()
-    session.stream = True
+    session.stream = True # required for reading the download in chunks
     _add_basic_auth(session, config)
     _add_ssl(session, config)
     _add_proxy(session, config)
