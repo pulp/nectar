@@ -66,8 +66,11 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
 
     @property
     def progress_interval(self):
-        seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
-        return datetime.timedelta(seconds=seconds)
+        # cache the progress interval for better performance
+        if not hasattr(self, '_progress_interval'):
+            seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
+            self._progress_interval = datetime.timedelta(seconds=seconds)
+        return self._progress_interval
 
     def download(self, request_list):
 
@@ -89,7 +92,6 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
         self.fire_download_started(report)
 
         last_update_time = report.start_time
-        progress_interval = self.progress_interval
 
         try:
             if self.is_canceled:
@@ -110,11 +112,7 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
                 file_handle.write(chunk)
                 report.bytes_downloaded += len(chunk)
 
-                now = datetime.datetime.now(tz=dateutils.utc_tz())
-                if now - last_update_time < progress_interval:
-                    continue
-                self.fire_download_progress(report)
-                last_update_time = now
+                last_update_time = self._interval_progress_report(last_update_time, report)
 
         except DownloadCancelled, e:
             _LOG.debug(str(e))
@@ -137,6 +135,15 @@ class HTTPEventletRequestsDownloader(PulpDownloader):
             request.finalize_file_handle()
 
         return report
+
+    def _interval_progress_report(self, last_update_time, report):
+        now = datetime.datetime.now(tz=dateutils.utc_tz())
+
+        if now - last_update_time < self.progress_interval:
+            return last_update_time
+
+        self.fire_download_progress(report)
+        return now
 
 # -- requests utilities --------------------------------------------------------
 
