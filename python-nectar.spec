@@ -33,7 +33,7 @@ Requires:       python-requests >= 1.2.0
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%{__python} setup.py install -01 --skip-build --root %{buildroot}
+%{__python} setup.py install -O1 --skip-build --root %{buildroot}
 
 %check
 nosetests test/unit/
