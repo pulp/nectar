@@ -13,7 +13,7 @@
 
 from datetime import datetime
 
-from pulp.common import dateutils
+from isodate import UTC
 
 # download states --------------------------------------------------------------
 
@@ -48,9 +48,9 @@ class DownloadReport(object):
         """
         Factory method for building a report based on a request
         :param request: request to build a report for
-        :type request: pulp.common.download.request.DownloadRequest
+        :type request: nectar.request.DownloadRequest
         :return: report for request
-        :rtype: pulp.common.download.report.DownloadReport
+        :rtype: nectar.report.DownloadReport
         """
         return cls(request.url, request.destination, request.data)
 
@@ -88,7 +88,7 @@ class DownloadReport(object):
         if self.state is not DOWNLOAD_WAITING:
             return
         self.state = DOWNLOAD_DOWNLOADING
-        self.start_time = datetime.now(tz=dateutils.utc_tz())
+        self.start_time = datetime.now(tz=UTC)
 
     def download_succeeded(self):
         """
@@ -124,5 +124,5 @@ class DownloadReport(object):
         if self.state is not DOWNLOAD_DOWNLOADING:
             return
         self.state = state
-        self.finish_time = datetime.now(tz=dateutils.utc_tz())
+        self.finish_time = datetime.now(tz=UTC)
 

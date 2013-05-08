@@ -19,9 +19,9 @@ from logging import getLogger
 import eventlet
 from eventlet.green import urllib2
 
-from pulp.common.download import report as download_report
-from pulp.common.download.downloaders.base import PulpDownloader
-from pulp.common.download.downloaders.urllib2_utils import HTTPDownloaderHandler
+from nectar import report as download_report
+from nectar.downloaders.base import Downloader
+from nectar.downloaders.urllib2_utils import HTTPDownloaderHandler
 
 # -- constants -----------------------------------------------------------------
 
@@ -37,7 +37,7 @@ DEFAULT_PROGRESS_INTERVAL = 5 # seconds
 
 # -- eventlet downloader -------------------------------------------------------
 
-class HTTPEventletDownloader(PulpDownloader):
+class HTTPEventletDownloader(Downloader):
     """
     Backend that is optimized for downloading large quantities of files.
 

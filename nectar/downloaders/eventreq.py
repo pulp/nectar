@@ -22,8 +22,8 @@ from logging import getLogger
 
 import requests
 
-from pulp.common.download.downloaders.base import PulpDownloader
-from pulp.common.download.report import DownloadReport, DOWNLOAD_SUCCEEDED
+from nectar.downloaders.base import Downloader
+from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
 # -- constants -----------------------------------------------------------------
 
@@ -49,7 +49,7 @@ class DownloadFailed(Exception):
 
 # -- downloader class ----------------------------------------------------------
 
-class HTTPEventletRequestsDownloader(PulpDownloader):
+class HTTPEventletRequestsDownloader(Downloader):
     """
     Downloader class that uses the third party Eventlets with Requests to handle
     HTTP, HTTPS and proxied download requests by the server.

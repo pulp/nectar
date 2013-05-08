@@ -13,13 +13,13 @@
 
 import logging
 
-from pulp.common.download.listener import DownloadEventListener
+from nectar.listener import DownloadEventListener
 
 
 _LOG = logging.getLogger(__name__)
 
 
-class PulpDownloader(object):
+class Downloader(object):
     """
     Abstract backend base class for downloader implementations. This class
     provides the base APIs required of any concrete downloader class.
@@ -35,9 +35,9 @@ class PulpDownloader(object):
     def __init__(self, config, event_listener=None):
         """
         :param config: configuration for this backend
-        :type config: pulp.common.download.config.DownloaderConfig
+        :type config: nectar.config.DownloaderConfig
         :param event_listener: event listener coupled to this backend
-        :type event_listener: pulp.common.download.listener.DownloadEventListener
+        :type event_listener: nectar.listener.DownloadEventListener
         """
         self.config = config
         self.event_listener = event_listener or DownloadEventListener()
@@ -51,9 +51,9 @@ class PulpDownloader(object):
         request list.
 
         :param request_list: list of download requests
-        :type request_list: iterator of pulp.common.download.request.DownloadRequest
+        :type request_list: iterator of nectar.request.DownloadRequest
         :return: list of download reports corresponding the the download requests
-        :rtype: list of pulp.common.download.report.DownloadReport
+        :rtype: list of nectar.report.DownloadReport
         """
         raise NotImplementedError()
 
@@ -72,7 +72,7 @@ class PulpDownloader(object):
         Fire the ``download_started`` event using the download report provided.
 
         :param report: download reports
-        :type report: pulp.common.download.report.DownloadReport
+        :type report: nectar.report.DownloadReport
         """
         self._fire_event_to_listener(self.event_listener.download_started, report)
 
@@ -81,7 +81,7 @@ class PulpDownloader(object):
         Fire the ``download_progress`` event using the download report provided.
 
         :param report: download reports
-        :type report: pulp.common.download.report.DownloadReport
+        :type report: nectar.report.DownloadReport
         """
         self._fire_event_to_listener(self.event_listener.download_progress, report)
 
@@ -90,7 +90,7 @@ class PulpDownloader(object):
         Fire the ``download_succeeded`` event using the download report provided.
 
         :param report: download reports
-        :type report: pulp.common.download.report.DownloadReport
+        :type report: nectar.report.DownloadReport
         """
         self._fire_event_to_listener(self.event_listener.download_succeeded, report)
 
@@ -99,7 +99,7 @@ class PulpDownloader(object):
         Fire the ``download_failed`` event using the download report provided.
 
         :param report: download reports
-        :type report: pulp.common.download.report.DownloadReport
+        :type report: nectar.report.DownloadReport
         """
         self._fire_event_to_listener(self.event_listener.download_failed, report)
 

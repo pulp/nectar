@@ -21,8 +21,8 @@ import pycurl
 
 from urlparse import urlparse
 
-from pulp.common.download import report as download_report
-from pulp.common.download.downloaders.base import PulpDownloader
+from nectar import report as download_report
+from nectar.downloaders.base import Downloader
 
 # default constants ------------------------------------------------------------
 
@@ -64,7 +64,7 @@ DEFAULT_SSL_VERIFY_HOST = SSL_VERIFY_HOST_TRUE
 
 # curl-based http download backend ---------------------------------------------
 
-class HTTPCurlDownloader(PulpDownloader):
+class HTTPCurlDownloader(Downloader):
 
     @property
     def max_concurrent(self):
@@ -161,7 +161,7 @@ class HTTPCurlDownloader(PulpDownloader):
         """
         This method configures the easy_handle with several default options: what redirection policy we wish to
         enforce, timeout values, and that we want progress reporting enabled.
-        
+
         :param easy_handle: The curl handle that we wish to configure with default parameters.
         :type  easy_handle: pycurl.Curl
         """
