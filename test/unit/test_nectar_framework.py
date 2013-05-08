@@ -15,17 +15,18 @@ import os
 import re
 import shutil
 import tempfile
-import unittest
 from cStringIO import StringIO
 from urlparse import urljoin
 
 import mock
 import pycurl
 
-from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.downloaders import curl as curl_downloader
-from pulp.common.download.listener import AggregatingEventListener
-from pulp.common.download.request import DownloadRequest
+from nectar.config import DownloaderConfig
+from nectar.downloaders import curl as curl_downloader
+from nectar.listener import AggregatingEventListener
+from nectar.request import DownloadRequest
+
+import base
 
 from http_static_test_server import HTTPStaticTestServer
 
@@ -128,7 +129,7 @@ class MockObjFactory(object):
 
 
 def determine_relative_data_dir():
-    possible_data_dir = 'platform/test/unit/server/data/test_common_download/'
+    possible_data_dir = 'test/unit/data/'
     while possible_data_dir:
         if os.path.exists(possible_data_dir):
             return possible_data_dir
@@ -137,7 +138,7 @@ def determine_relative_data_dir():
 
 # test suite -------------------------------------------------------------------
 
-class DownloadRequestTests(unittest.TestCase):
+class DownloadRequestTests(base.NectarTests):
     def test__init__(self):
         url = 'http://www.theonion.com/articles/world-surrenders-to-north-korea,31265/'
         path = '/fake/path'
@@ -146,7 +147,7 @@ class DownloadRequestTests(unittest.TestCase):
         self.assertEqual(request.destination, path)
 
 
-class DownloadTests(unittest.TestCase):
+class DownloadTests(base.NectarTests):
     data_dir = determine_relative_data_dir()
     file_list = ['100K_file', '500K_file', '1M_file']
     file_sizes = [102400, 512000, 1048576]
@@ -169,7 +170,7 @@ class DownloadTests(unittest.TestCase):
 
 # curl downloader tests --------------------------------------------------------
 
-class CurlInstantiationTests(unittest.TestCase):
+class CurlInstantiationTests(base.NectarTests):
 
     def test_http_downloader(self):
         config = DownloaderConfig()
@@ -376,7 +377,7 @@ class LiveCurlDownloadTests(DownloadTests):
         self.assertEqual(listener.download_failed.call_count, 0)
 
 
-class TestHTTPCurlDownloadBackend(unittest.TestCase):
+class TestHTTPCurlDownloadBackend(base.NectarTests):
     def test__clear_easy_handle_download_filelike_destination(self):
         # If we give a file-like object as a destination to the request on the easy_handle, this
         # method should not close the filepointer on the handle

@@ -11,24 +11,24 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-import httplib
 import os
-import unittest
 import urllib2
 from cStringIO import StringIO
 
 import mock
 
-from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.downloaders import event as eventlet_downloader
-from pulp.common.download.downloaders import urllib2_utils
+from nectar.config import DownloaderConfig
+from nectar.downloaders import event as eventlet_downloader
+from nectar.downloaders import urllib2_utils
+
+import base
 
 from http_static_test_server import HTTPStaticTestServer
-from test_common_download import DownloadTests, MockEventListener
+from test_nectar_framework import DownloadTests, MockEventListener
 
 # evenetlet downloader tests ---------------------------------------------------
 
-class EventletDownloaderInstantiationTests(unittest.TestCase):
+class EventletDownloaderInstantiationTests(base.NectarTests):
 
     def test_instantiation(self):
         config =  DownloaderConfig()
@@ -103,7 +103,7 @@ class LiveEventletDownloaderTests(DownloadTests):
         self.assertEqual(listener.download_failed.call_count, 0)
 
 
-class EventletConnectionTests(unittest.TestCase):
+class EventletConnectionTests(base.NectarTests):
 
     def test_instantiation(self):
         host = 'myserver.com'
@@ -142,7 +142,7 @@ MOCK_RESPONSE = mock.MagicMock()
 MOCK_RESPONSE.code = 200
 MOCK_RESPONSE.msg = 'OK'
 
-class EventletHandlerTests(unittest.TestCase):
+class EventletHandlerTests(base.NectarTests):
 
     def test_instantiation(self):
         try:
@@ -150,10 +150,10 @@ class EventletHandlerTests(unittest.TestCase):
         except:
             self.fail('instantiation failed')
 
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.proxy_open', return_value=None)
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.https_open', return_value=None)
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.http_open', return_value=MOCK_RESPONSE)
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.default_open', return_value=None)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.proxy_open', return_value=None)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.https_open', return_value=None)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.http_open', return_value=MOCK_RESPONSE)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.default_open', return_value=None)
     def test_http_open(self, mock_default_open, mock_http_open, mock_https_open, mock_proxy_open):
         url = 'http://myserver.com/path/to/resource'
         req = urllib2.Request(url)
@@ -167,10 +167,10 @@ class EventletHandlerTests(unittest.TestCase):
         self.assertEqual(mock_https_open.call_count, 0)
         self.assertEqual(mock_proxy_open.call_count, 0)
 
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.proxy_open', return_value=None)
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.https_open', return_value=MOCK_RESPONSE)
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.http_open', return_value=None)
-    @mock.patch('pulp.common.download.downloaders.urllib2_utils.HTTPDownloaderHandler.default_open', return_value=None)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.proxy_open', return_value=None)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.https_open', return_value=MOCK_RESPONSE)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.http_open', return_value=None)
+    @mock.patch('nectar.downloaders.urllib2_utils.HTTPDownloaderHandler.default_open', return_value=None)
     def test_http_open(self, mock_default_open, mock_http_open, mock_https_open, mock_proxy_open):
         url = 'https://myserver.com/path/to/resource'
         req = urllib2.Request(url)

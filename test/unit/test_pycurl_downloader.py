@@ -14,19 +14,19 @@
 from datetime import datetime
 import os
 import mock
-import unittest
 import urlparse
 
 import pycurl
 
-from pulp.common.download.config import DownloaderConfig
-from pulp.common.download.listener import AggregatingEventListener
-from pulp.common.download.downloaders.curl import (
+from nectar.config import DownloaderConfig
+from nectar.listener import AggregatingEventListener
+from nectar.downloaders.curl import (
     DEFAULT_FOLLOW_LOCATION, DEFAULT_MAX_REDIRECTS, DEFAULT_CONNECT_TIMEOUT, DEFAULT_LOW_SPEED_LIMIT,
     DEFAULT_LOW_SPEED_TIME, DEFAULT_NO_PROGRESS, HTTPCurlDownloader, HTTPSCurlDownloader)
-from pulp.common.download.report import DOWNLOAD_FAILED, DownloadReport, DOWNLOAD_SUCCEEDED
+from nectar.report import DOWNLOAD_FAILED, DownloadReport, DOWNLOAD_SUCCEEDED
 
-from test_common_download import DownloadTests, mock_curl_easy_factory, mock_curl_multi_factory, MockObjFactory
+import base
+from test_nectar_framework import DownloadTests, mock_curl_easy_factory, mock_curl_multi_factory, MockObjFactory
 
 
 def mock_curl_multi_factory_with_errors():
@@ -44,7 +44,7 @@ def mock_curl_multi_factory_with_errors():
     return mock_curl_multi
 
 
-class TestAddConnectionConfiguration(unittest.TestCase):
+class TestAddConnectionConfiguration(base.NectarTests):
     """
     This test module tests the HTTPSCurlDownloadBackend._add_connection_configuration method. It asserts that
     all the appropriate default values are passed to pycurl, no more and no less. It uses Mocks to make these
@@ -55,7 +55,7 @@ class TestAddConnectionConfiguration(unittest.TestCase):
         Assert that the default configuration options are handed to the pycurl easy_handle.
         """
         config = DownloaderConfig('https')
-        curl_downloader = HTTPSCurlDownloadBackend(config)
+        curl_downloader = HTTPSCurlDownloader(config)
         easy_handle = mock.MagicMock()
 
         curl_downloader._add_connection_configuration(easy_handle)
@@ -72,7 +72,7 @@ class TestAddConnectionConfiguration(unittest.TestCase):
         easy_handle.setopt.assert_any_call(pycurl.NOPROGRESS, DEFAULT_NO_PROGRESS)
 
 
-class TestAddProxyConfiguration(unittest.TestCase):
+class TestAddProxyConfiguration(base.NectarTests):
     """
     This test module tests the HTTPCurlDownloader._add_proxy_configuration method.
     It asserts that the proxy related settings are all appropriately handed
@@ -172,12 +172,12 @@ class TestAddProxyConfiguration(unittest.TestCase):
                 self.assertTrue(isinstance(setting_value, str))
 
 
-class TestBuildEasyHandle(unittest.TestCase):
+class TestBuildEasyHandle(base.NectarTests):
     """
     This test suite tests the _build_easy_handle() method.
     """
     @mock.patch('pycurl.Curl', mock.MagicMock)
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader'
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader'
                 '._add_connection_configuration')
     def test__build_easy_handle_calls__add_connection_configuration(self,
                                                                     _add_connection_configuration):
@@ -193,8 +193,7 @@ class TestBuildEasyHandle(unittest.TestCase):
         _add_connection_configuration.assert_called_with(easy_handle)
 
     @mock.patch('pycurl.Curl', mock.MagicMock)
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader'
-                '._add_proxy_configuration')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader' '._add_proxy_configuration')
     def test__build_easy_handle_calls__add_proxy_configuration(self,
                                                                _add_proxy_configuration):
         """
@@ -209,7 +208,7 @@ class TestBuildEasyHandle(unittest.TestCase):
         _add_proxy_configuration.assert_called_with(easy_handle)
 
 
-class TestAddConnectionConfiguration(unittest.TestCase):
+class TestAddConnectionConfiguration(base.NectarTests):
     """
     Test the HTTPCurlDownloader._add_connection_configuration() method.
     """
@@ -252,7 +251,7 @@ class TestDownload(DownloadTests):
     """
     @mock.patch('pycurl.CurlMulti', MockObjFactory(mock_curl_multi_factory_with_errors))
     @mock.patch('pycurl.Curl', MockObjFactory(mock_curl_easy_factory))
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader._process_completed_download')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader._process_completed_download')
     def test_calls__process_completed_download_err_list(self, _process_completed_download):
         """
         In this test, we assert that download() calls _process_completed_download() correctly when pycurl
@@ -282,7 +281,7 @@ class TestDownload(DownloadTests):
 
     @mock.patch('pycurl.CurlMulti', MockObjFactory(mock_curl_multi_factory))
     @mock.patch('pycurl.Curl', MockObjFactory(mock_curl_easy_factory))
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader._process_completed_download')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader._process_completed_download')
     def test_calls__process_completed_download_ok_list(self, _process_completed_download):
         """
         In this test, we assert that download() calls _process_completed_download() correctly when pycurl
@@ -392,13 +391,13 @@ class TestDownload(DownloadTests):
         self.assertEqual(mock_multi_curl.select.call_count, 0)
 
 
-class TestProcessCompletedDownload(unittest.TestCase):
+class TestProcessCompletedDownload(base.NectarTests):
     """
     Test the HTTPCurlDownloader._process_completed_download() method.
     """
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader._clear_easy_handle_download')
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader.fire_download_failed')
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader.fire_download_succeeded')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader._clear_easy_handle_download')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader.fire_download_failed')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader.fire_download_succeeded')
     @mock.patch('pycurl.CurlMulti', MockObjFactory(mock_curl_multi_factory))
     @mock.patch('pycurl.Curl', MockObjFactory(mock_curl_easy_factory))
     def test_download_successful(self, fire_download_succeeded, fire_download_failed,
@@ -436,9 +435,9 @@ class TestProcessCompletedDownload(unittest.TestCase):
         # it's after the start_time we recorded earlier
         self.assertTrue(report.finish_time > start_time)
 
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader._clear_easy_handle_download')
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader.fire_download_failed')
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader.fire_download_succeeded')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader._clear_easy_handle_download')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader.fire_download_failed')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader.fire_download_succeeded')
     @mock.patch('pycurl.CurlMulti', MockObjFactory(mock_curl_multi_factory))
     @mock.patch('pycurl.Curl', MockObjFactory(mock_curl_easy_factory))
     def test_http_error_code(self, fire_download_succeeded, fire_download_failed, _clear_easy_handle_download):
@@ -484,9 +483,9 @@ class TestProcessCompletedDownload(unittest.TestCase):
         # it's after the start_time we recorded earlier
         self.assertTrue(report.finish_time > start_time)
 
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader._clear_easy_handle_download')
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader.fire_download_failed')
-    @mock.patch('pulp.common.download.downloaders.curl.HTTPCurlDownloader.fire_download_succeeded')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader._clear_easy_handle_download')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader.fire_download_failed')
+    @mock.patch('nectar.downloaders.curl.HTTPCurlDownloader.fire_download_succeeded')
     @mock.patch('pycurl.CurlMulti', MockObjFactory(mock_curl_multi_factory))
     @mock.patch('pycurl.Curl', MockObjFactory(mock_curl_easy_factory))
     def test_pycurl_errors(self, fire_download_succeeded, fire_download_failed, _clear_easy_handle_download):
@@ -538,7 +537,7 @@ class TestProcessCompletedDownload(unittest.TestCase):
         self.assertTrue(report.finish_time > start_time)
 
 
-class TestAddSSLConfiguration(unittest.TestCase):
+class TestAddSSLConfiguration(base.NectarTests):
     """
     Assert correct behaviour in the _add_ssl_configuration() method.
     """
