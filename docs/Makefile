@@ -77,17 +77,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Pulpv2RESTAPIs.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Nectar.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Pulpv2RESTAPIs.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Nectar.qhc"
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/Pulpv2RESTAPIs"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/Pulpv2RESTAPIs"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/Nectar"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/Nectar"
 	@echo "# devhelp"
 
 epub:
