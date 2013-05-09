@@ -30,8 +30,8 @@ from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 _LOG = getLogger(__name__)
 
 DEFAULT_MAX_CONCURRENT = 5
-DEFAULT_BUFFER_SIZE = 8192
-DEFAULT_PROGRESS_INTERVAL = 5
+DEFAULT_BUFFER_SIZE = 8192 # bytes
+DEFAULT_PROGRESS_INTERVAL = 5 # seconds
 
 # -- exception classes ---------------------------------------------------------
 
@@ -65,11 +65,8 @@ class HTTPEventletRequestsDownloader(Downloader):
 
     @property
     def progress_interval(self):
-        # cache the progress interval for better performance
-        if not hasattr(self, '_progress_interval'):
-            seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
-            self._progress_interval = datetime.timedelta(seconds=seconds)
-        return self._progress_interval
+        seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
+        return datetime.timedelta(seconds=seconds)
 
     def download(self, request_list):
 
@@ -99,7 +96,9 @@ class HTTPEventletRequestsDownloader(Downloader):
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
 
+            progress_interval = self.progress_interval
             file_handle = request.initialize_file_handle()
+
             last_update_time = datetime.datetime.now()
             self.fire_download_progress(report) # guarantee 1 report at the beginning
 
@@ -111,7 +110,12 @@ class HTTPEventletRequestsDownloader(Downloader):
                 file_handle.write(chunk)
                 report.bytes_downloaded += len(chunk)
 
-                last_update_time = self._interval_progress_report(last_update_time, report)
+                now = datetime.datetime.now()
+                if now - last_update_time < progress_interval:
+                    continue
+
+                last_update_time = now
+                self.fire_download_progress(report)
 
             self.fire_download_progress(report) # guarantee 1 report at the end
 
@@ -139,15 +143,6 @@ class HTTPEventletRequestsDownloader(Downloader):
 
         return report
 
-    def _interval_progress_report(self, last_update_time, report):
-        now = datetime.datetime.now()
-
-        if now - last_update_time < self.progress_interval:
-            return last_update_time
-
-        self.fire_download_progress(report)
-        return now
-
 # -- requests utilities --------------------------------------------------------
 
 def build_session(config):
@@ -162,15 +157,15 @@ def build_session(config):
 def _add_basic_auth(session, config):
     if None in (config.basic_auth_username, config.basic_auth_password):
         return
+
     session.auth = (config.basic_auth_username, config.basic_auth_password)
 
 
 def _add_ssl(session, config):
-    # NOTE using this logic automatically turns on ssl verification if a ca
-    # certificate is provided, ignoring the boolean flag, which makes sense
-    session.verify = config.ssl_ca_cert_path or config.ssl_validation
+    session.verify = config.ssl_validation if config.ssl_validation is not None else True
 
     client_cert_tuple = (config.ssl_client_cert_path, config.ssl_client_key_path)
+
     if None not in client_cert_tuple:
         session.cert = client_cert_tuple
 
