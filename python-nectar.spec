@@ -12,9 +12,15 @@ Source0:
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
+
 BuildRequires:  python-mock
 BuildRequires:  python-nose
 BuildRequires:  python-setuptools
+
+Requires:       python-eventlet >= 0.12.0
+Requires:       python-isodate >= 0.4.9
+Requires:       python-pycurl >= 7.19.0
+Requires:       python-requests >= 1.2.0
 
 %description
 %{summary}

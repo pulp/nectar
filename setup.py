@@ -27,7 +27,7 @@ setup(name='nectar',
       options={'build': {'build_base': '_build'},
                'sdist': {'dist_dir': '_dist'},},
       requires=['isodate >= 0.4.9',
-                'pycurl >= 7.0.0',
+                'pycurl >= 7.19.0',
                 'eventlet >= 0.12.0',
                 'requests >= 1.2.0',],)
 
