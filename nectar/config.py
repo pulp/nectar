@@ -71,3 +71,6 @@ class DownloaderConfig(object):
         or by accessing the attributes by name.
         """
         return self.__dict__.get(item, None)
+
+    def get(self, item, default=None):
+        return self.__dict__.get(item, default)
