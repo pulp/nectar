@@ -1,14 +1,14 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from %distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           python-nectar
-Version:        0.0.90
+Version:        0.90.0
 Release:        1%{?dist}
 Summary:        Performance tuned network download client library
 
 Group:          Development/Tools
 License:        GPLv2
 URL:            https://github.com/pulp/nectar
-Source0:
+Source0:        %{name}-%{version}.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
