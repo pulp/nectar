@@ -15,10 +15,12 @@
 HTTP test server for writing tests against an "external" server.
 """
 
+import atexit
 import threading
 from BaseHTTPServer import HTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
+# -- static http test server class ---------------------------------------------
 
 class HTTPStaticTestServer(object):
     """
@@ -41,6 +43,7 @@ class HTTPStaticTestServer(object):
         self.server.timeout = 0.1 # timeout after a tenth of a second
         self._is_running = False
         self._server_thread = None
+        _SERVERS.append(self)
 
     # server loop --------------------------------------------------------------
 
@@ -58,3 +61,19 @@ class HTTPStaticTestServer(object):
         self._is_running = False
         self._server_thread.join()
         self._server_thread = None
+        _SERVERS.remove(self)
+
+# -- atexit cleanup ------------------------------------------------------------
+
+_SERVERS = []
+
+
+def _cleanup_servers():
+    """
+    Cleanup all of the running server in case we were ctrl+c'd
+    """
+    for server in _SERVERS:
+        server.stop()
+
+
+atexit.register(_cleanup_servers)
