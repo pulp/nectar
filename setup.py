@@ -26,7 +26,7 @@ setup(name='nectar',
       packages=find_packages(),
       test_suite='nose.collector',
 
-      classifiers=['Development Status :: 4 - Beta',
+      classifiers=['Development Status :: 3 - Alpha',
                    'Intended Audience :: Developers',
                    'Intended Audience :: Information Technology',
                    'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
