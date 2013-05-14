@@ -1,4 +1,4 @@
-#!/usr/bin/sh
+#!/bin/sh
 
 # This script exists to ease the step of making a tar ball that is compatible
 # with the rpm spec file.
