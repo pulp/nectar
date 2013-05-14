@@ -163,6 +163,8 @@ def _add_basic_auth(session, config):
 
 def _add_ssl(session, config):
     session.verify = config.ssl_validation if config.ssl_validation is not None else True
+    if session.verify and config.ssl_ca_cert_path is not None:
+        session.verify = config.ssl_ca_cert_path
 
     client_cert_tuple = (config.ssl_client_cert_path, config.ssl_client_key_path)
 
