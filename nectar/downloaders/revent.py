@@ -13,7 +13,7 @@
 
 # first, so that all subsequently imported modules are the monkey patched versions
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(thread=False)
 
 import datetime
 import httplib
