@@ -13,9 +13,6 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
 
-# used by %check; see comment below
-#BuildRequires:  python-mock
-#BuildRequires:  python-nose
 BuildRequires:  python-setuptools
 
 Requires:       python-eventlet >= 0.9.17
@@ -39,11 +36,6 @@ Requires:       curl >= 7.19.0
 %install
 rm -rf $RPM_BUILD_ROOT
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
-
-# (jconnor 2013-05) commented out until a sub-set of tests is identified that
-# do not pull in so many dependiencies
-#%check
-#nosetests test/unit/
 
 %clean
 rm -rf $RPM_BUILD_ROOT
