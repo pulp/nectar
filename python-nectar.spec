@@ -13,8 +13,9 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
 
-BuildRequires:  python-mock
-BuildRequires:  python-nose
+# used by %check; see comment below
+#BuildRequires:  python-mock
+#BuildRequires:  python-nose
 BuildRequires:  python-setuptools
 
 Requires:       python-eventlet >= 0.9.17
