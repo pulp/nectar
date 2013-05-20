@@ -2,7 +2,7 @@
 
 Name:           python-nectar
 Version:        0.90.3
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Performance tuned network download client library
 
 Group:          Development/Tools
