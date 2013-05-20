@@ -41,6 +41,6 @@ setup(name='nectar',
 
       install_requires=['isodate >= 0.4.9',
                         'pycurl >= 7.19.0',
-                        'eventlet >= 0.12.0',
-                        'requests >= 1.2.0',],)
+                        'eventlet >= 0.9.17',
+                        'requests >= 1.1.0',],)
 
