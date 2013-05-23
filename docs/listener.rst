@@ -7,6 +7,9 @@ A DownloadEventListener object is passed into a downloader's constructor. On
 certain events, methods on the event listener are used as callbacks to inform on
 a download starting, a download's progress, and a download's success or failure.
 
+This gives the developer an opportunity to develop event-driven code by
+overriding the this base class.
+
 The event listener's interface is as follows::
 
  def download_started(self, report):
