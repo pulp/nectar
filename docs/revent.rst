@@ -1,2 +1,0 @@
-Eventlet+Requests-Based Downloader
-==================================

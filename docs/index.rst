@@ -11,18 +11,19 @@ The Interface:
 .. toctree::
    :maxdepth: 1
 
-   request
-   report
-   config
-   listener
+   general/request
+   general/report
+   general/config
+   general/listener
 
 The Downloaders:
 
 .. toctree::
    :maxdepth: 1
 
-   curl
-   revent
+   downloaders/api
+   downloaders/curl
+   downloaders/revent
 
 
 Indices and tables
