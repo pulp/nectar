@@ -11,6 +11,9 @@
 # You should have received a copy of GPLv2 along with this software; if not,
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+import os
+import tempfile
+
 
 class DownloaderConfig(object):
     """
@@ -49,28 +52,112 @@ class DownloaderConfig(object):
                              value, and should be specified in units of bytes per second.
     """
 
+    # -- instantiation ---------------------------------------------------------
+
     def __init__(self, **kwargs):
         """
-        :param kwargs:   keyword arguments representing the downloader's configuration.
-                         See the DownloaderConfig's docblock for a list of supported
-                         options.
-        :type  kwargs:   dict
+        :param kwargs: keyword arguments representing the downloader's configuration.
+                       See the DownloaderConfig's docblock for a list of supported
+                       options.
+        :type kwargs: dict
         """
-        max_concurrent = kwargs.pop('max_concurrent', None)
-        if not (max_concurrent > 0 or max_concurrent is None):
-            raise AttributeError('max_concurrent must be greater than 0')
+        self._temp_files = []
 
-        self.max_concurrent = max_concurrent
+        # concurrency options
+        self._process_concurrency_kwargs(kwargs)
+
+        # ssl file options
+        self._process_ssl_file_kwargs(kwargs)
 
         # the open-ended nature of this will be solved with documentation
         self.__dict__.update(kwargs)
 
+    def _process_concurrency_kwargs(self, kwargs):
+        # assert that either the concurrency is unspecified or that it is a
+        # positive integer
+
+        max_concurrent = kwargs.pop('max_concurrent', None)
+
+        if not (max_concurrent > 0 or max_concurrent is None):
+            raise AttributeError('max_concurrent must be greater than 0')
+
+        kwargs['max_concurrent'] = max_concurrent
+
+    def _process_ssl_file_kwargs(self, kwargs):
+        # make sure both path and data configuration options were not specified,
+        # but make both available
+
+        # it is known that this is not the most performant solution, but I don't
+        # think we really care
+
+        ssl_kwargs = {}
+
+        for data_arg_name, file_arg_name in (('ssl_ca_cert', 'ssl_ca_cert_path'),
+                                             ('ssl_client_cert', 'ssl_client_cert_path'),
+                                             ('ssl_client_key', 'ssl_client_key_path')):
+
+            data_arg_value = kwargs.pop(data_arg_name, None)
+            file_arg_value = kwargs.pop(file_arg_name, None)
+
+            if data_arg_value is None and file_arg_value is None:
+                continue
+
+            if data_arg_value is None:
+                ssl_kwargs[file_arg_name] = file_arg_value
+
+                with open(file_arg_value, 'r') as file_arg_handle:
+                    ssl_kwargs[data_arg_name] = file_arg_handle.read()
+
+            elif file_arg_value is None:
+                ssl_kwargs[data_arg_name] = data_arg_value
+
+                data_arg_os_handle, file_arg_value = tempfile.mkstemp()
+                os.write(data_arg_os_handle, data_arg_value)
+                os.close(data_arg_os_handle)
+                self._temp_files.append(file_arg_value)
+
+                ssl_kwargs[file_arg_name] = file_arg_value
+
+            else:
+                raise AttributeError('Incompatible configuration options provided: %s, %s' %
+                                     (data_arg_name, file_arg_name))
+
+        kwargs.update(ssl_kwargs)
+
+    # -- finalization ----------------------------------------------------------
+
+    def __del__(self):
+        self.finalize()
+
+    def finalize(self):
+        """
+        Delete any persistent state.
+
+        Note: this method should be called by the instantiator once they are
+        finished with the configuration instance. It is *not* called by the
+        downloaders themselves.
+        """
+        for file_name in self._temp_files:
+            os.unlink(file_name)
+
+    # -- configuration query api -----------------------------------------------
+
     def __getattr__(self, item):
         """
-        This allows us to retrieve configuration parameters from this object with getattr()
-        or by accessing the attributes by name.
+        This allows us to retrieve configuration parameters from this object
+        with getattr() or by accessing the attributes by name.
         """
         return self.__dict__.get(item, None)
 
     def get(self, item, default=None):
+        """
+        Dictionary semantics for providing more convenient default values than
+        None.
+
+        :param item: configuration attribute to look for
+        :type item: basestring
+        :param default: default configuration attribute value
+        :return: the value of the configuration attribute if found, otherwise
+                 the default is returned
+        """
         return self.__dict__.get(item, default)
