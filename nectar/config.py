@@ -105,6 +105,9 @@ class DownloaderConfig(object):
             if data_arg_value is None:
                 ssl_kwargs[file_arg_name] = file_arg_value
 
+                if not os.access(file_arg_value, os.F_OK | os.R_OK):
+                    raise AttributeError('Cannot read file: %s' % file_arg_value)
+
                 with open(file_arg_value, 'r') as file_arg_handle:
                     ssl_kwargs[data_arg_name] = file_arg_handle.read()
 
@@ -138,6 +141,8 @@ class DownloaderConfig(object):
         downloaders themselves.
         """
         for file_name in self._temp_files:
+            if not os.path.exists(file_name):
+                continue
             os.unlink(file_name)
 
     # -- configuration query api -----------------------------------------------
