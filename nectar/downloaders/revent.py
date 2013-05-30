@@ -19,6 +19,7 @@ import datetime
 import httplib
 import urllib
 from logging import getLogger
+from time import sleep
 
 import requests
 
@@ -32,6 +33,8 @@ _LOG = getLogger(__name__)
 DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192 # bytes
 DEFAULT_PROGRESS_INTERVAL = 5 # seconds
+
+ONE_SECOND = datetime.timedelta(seconds=1)
 
 # -- exception classes ---------------------------------------------------------
 
@@ -72,20 +75,36 @@ class HTTPEventletRequestsDownloader(Downloader):
 
         pool = eventlet.GreenPool(size=self.max_concurrent)
         session = build_session(self.config)
+        bytes_this_second = 0
+        time_bytes_this_second_was_cleared = datetime.datetime.now()
 
         def _session_generator():
             while True: yield session
 
-        for report in pool.imap(self._fetch, request_list, _session_generator()):
+        def _bytes_this_second_generator():
+            while True: yield  bytes_this_second
+
+        def _time_bytes_this_second_was_cleared_generator():
+            while True: yield time_bytes_this_second_was_cleared
+
+        for report in pool.imap(self._fetch,
+                                request_list,
+                                _session_generator(),
+                                _bytes_this_second_generator(),
+                                _time_bytes_this_second_was_cleared_generator()):
+
             if report.state is DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
+
             else: # DOWNLOAD_FAILED
                 self.fire_download_failed(report)
 
-    def _fetch(self, request, session):
+    def _fetch(self, request, session, bytes_this_second, time_bytes_this_second_was_cleared):
         report = DownloadReport.from_download_request(request)
         report.download_started()
         self.fire_download_started(report)
+
+        max_speed = self.config.max_speed # None or integer in bytes/second
 
         try:
             if self.is_canceled:
@@ -108,14 +127,24 @@ class HTTPEventletRequestsDownloader(Downloader):
                     raise DownloadCancelled(request.url)
 
                 file_handle.write(chunk)
-                report.bytes_downloaded += len(chunk)
+
+                bytes_read = len(chunk)
+                report.bytes_downloaded += bytes_read
 
                 now = datetime.datetime.now()
-                if now - last_update_time < progress_interval:
-                    continue
 
-                last_update_time = now
-                self.fire_download_progress(report)
+                if now - last_update_time >= progress_interval:
+                    last_update_time = now
+                    self.fire_download_progress(report)
+
+                if now - time_bytes_this_second_was_cleared >= ONE_SECOND:
+                    bytes_this_second = 0
+                    time_bytes_this_second_was_cleared = now
+
+                bytes_this_second += bytes_read
+
+                if max_speed is not None and bytes_this_second > max_speed:
+                    sleep(1) # sleep for 1 second to reset the bytes_this_second
 
             self.fire_download_progress(report) # guarantee 1 report at the end
 
