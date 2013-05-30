@@ -114,11 +114,13 @@ class DownloaderConfig(object):
             elif file_arg_value is None:
                 ssl_kwargs[data_arg_name] = data_arg_value
 
-                data_arg_os_handle, file_arg_value = tempfile.mkstemp()
+                prefix = 'nectar-%s-' % data_arg_name
+                data_arg_os_handle, file_arg_value = tempfile.mkstemp(prefix=prefix)
+
                 os.write(data_arg_os_handle, data_arg_value)
                 os.close(data_arg_os_handle)
-                self._temp_files.append(file_arg_value)
 
+                self._temp_files.append(file_arg_value)
                 ssl_kwargs[file_arg_name] = file_arg_value
 
             else:
