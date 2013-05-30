@@ -46,6 +46,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc LICENSE.txt
 
 %changelog
+* Thu May 30 2013 Jason L Connor <jason.connor@gmail.com> 0.95.0-1
+- 967939 - added kwarg processing for ssl file and data configuration options
+  that make both available via the configuration instance
+  (jason.connor@gmail.com)
 * Mon May 20 2013 Jason L Connor <jason.connor@gmail.com> 0.90.3-2
 - changed requires so for epel and fedora; commented out (for now) %%check
   (jason.connor@gmail.com)
