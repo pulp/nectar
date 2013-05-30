@@ -17,9 +17,9 @@ eventlet.monkey_patch(thread=False)
 
 import datetime
 import httplib
+import time
 import urllib
 from logging import getLogger
-from time import sleep
 
 import requests
 
@@ -100,11 +100,16 @@ class HTTPEventletRequestsDownloader(Downloader):
                 self.fire_download_failed(report)
 
     def _fetch(self, request, session, bytes_this_second, time_bytes_this_second_was_cleared):
+
+        max_speed = self.config.max_speed # None or integer in bytes/second
+
+        if max_speed is not None:
+            max_speed -= (2 * self.buffer_size) # because we test *after* reading and only sleep for 1/2 second
+            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go finer grained
+
         report = DownloadReport.from_download_request(request)
         report.download_started()
         self.fire_download_started(report)
-
-        max_speed = self.config.max_speed # None or integer in bytes/second
 
         try:
             if self.is_canceled:
@@ -143,8 +148,12 @@ class HTTPEventletRequestsDownloader(Downloader):
 
                 bytes_this_second += bytes_read
 
-                if max_speed is not None and bytes_this_second > max_speed:
-                    sleep(1) # sleep for 1 second to reset the bytes_this_second
+                if max_speed is not None and bytes_this_second >= max_speed:
+                    # it's not worth doing fancier mathematics than this, very
+                    # fine-grained sleep times [1] are not honored by the system
+                    # [1] for example, sleeping the remaining fraction of time
+                    # before this second is up
+                    time.sleep(0.5)
 
             self.fire_download_progress(report) # guarantee 1 report at the end
 
@@ -157,8 +166,6 @@ class HTTPEventletRequestsDownloader(Downloader):
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
             report.download_failed()
-
-        # XXX (jconnor-2013-04-18) handle requests-specific exceptions?
 
         except Exception, e:
             _LOG.exception(e)
