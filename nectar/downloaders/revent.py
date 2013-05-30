@@ -75,6 +75,7 @@ class HTTPEventletRequestsDownloader(Downloader):
 
         pool = eventlet.GreenPool(size=self.max_concurrent)
         session = build_session(self.config)
+
         bytes_this_second = 0
         time_bytes_this_second_was_cleared = datetime.datetime.now()
 
@@ -105,7 +106,7 @@ class HTTPEventletRequestsDownloader(Downloader):
 
         if max_speed is not None:
             max_speed -= (2 * self.buffer_size) # because we test *after* reading and only sleep for 1/2 second
-            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go finer grained
+            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go slower
 
         report = DownloadReport.from_download_request(request)
         report.download_started()
