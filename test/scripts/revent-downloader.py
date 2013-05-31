@@ -68,8 +68,9 @@ def _filename_from_url(url):
 
 def _downloader_config():
     kwargs = {'ssl_validation': True,
-              'proxy_host': '204.84.216.200',
-              'proxy_port': 3128,}
+              #'proxy_host': '204.84.216.200',
+              #'proxy_port': 3128,
+              'max_speed': 50000}
     config = DownloaderConfig(**kwargs)
     return config
 
