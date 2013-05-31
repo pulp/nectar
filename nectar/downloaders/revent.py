@@ -76,23 +76,13 @@ class HTTPEventletRequestsDownloader(Downloader):
         pool = eventlet.GreenPool(size=self.max_concurrent)
         session = build_session(self.config)
 
-        bytes_this_second = 0
-        time_bytes_this_second_was_cleared = datetime.datetime.now()
+        session.nectar_bytes_this_second = 0
+        session.nectar_time_bytes_this_second_was_cleared = datetime.datetime.now()
 
         def _session_generator():
             while True: yield session
 
-        def _bytes_this_second_generator():
-            while True: yield  bytes_this_second
-
-        def _time_bytes_this_second_was_cleared_generator():
-            while True: yield time_bytes_this_second_was_cleared
-
-        for report in pool.imap(self._fetch,
-                                request_list,
-                                _session_generator(),
-                                _bytes_this_second_generator(),
-                                _time_bytes_this_second_was_cleared_generator()):
+        for report in pool.imap(self._fetch, request_list, _session_generator()):
 
             if report.state is DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
@@ -100,7 +90,7 @@ class HTTPEventletRequestsDownloader(Downloader):
             else: # DOWNLOAD_FAILED
                 self.fire_download_failed(report)
 
-    def _fetch(self, request, session, bytes_this_second, time_bytes_this_second_was_cleared):
+    def _fetch(self, request, session):
 
         max_speed = self.config.max_speed # None or integer in bytes/second
 
@@ -143,13 +133,13 @@ class HTTPEventletRequestsDownloader(Downloader):
                     last_update_time = now
                     self.fire_download_progress(report)
 
-                if now - time_bytes_this_second_was_cleared >= ONE_SECOND:
-                    bytes_this_second = 0
-                    time_bytes_this_second_was_cleared = now
+                if now - session.nectar_time_bytes_this_second_was_cleared >= ONE_SECOND:
+                    session.nectar_bytes_this_second = 0
+                    session.nectar_time_bytes_this_second_was_cleared = now
 
-                bytes_this_second += bytes_read
+                session.nectar_bytes_this_second += bytes_read
 
-                if max_speed is not None and bytes_this_second >= max_speed:
+                if max_speed is not None and session.nectar_bytes_this_second >= max_speed:
                     # it's not worth doing fancier mathematics than this, very
                     # fine-grained sleep times [1] are not honored by the system
                     # [1] for example, sleeping the remaining fraction of time
