@@ -202,6 +202,28 @@ class LiveDownloadingTests(base.NectarTests):
         for dest in dest_list[len(self.data_file_names):]:
             self.assertFalse(os.path.exists(dest))
 
+    def test_throttling(self):
+        two_seconds = datetime.timedelta(seconds=2)
+        three_seconds = datetime.timedelta(seconds=3)
+
+        cfg = config.DownloaderConfig(max_speed=256000) # 1/2 size of file
+        lst = listener.AggregatingEventListener()
+        downloader = revent.HTTPEventletRequestsDownloader(cfg, lst)
+
+        # use the 500k file, should take >= 2 seconds to download, but < 3
+        file_path = os.path.join(self.data_directory, self.data_file_names[1])
+        dest_path = os.path.join(self.download_dir, self.data_file_names[1])
+
+        url = 'http://localhost:%d/%s' % (self.server_port, file_path)
+        req = request.DownloadRequest(url, dest_path)
+
+        start = datetime.datetime.now()
+        downloader.download([req])
+        finish = datetime.datetime.now()
+
+        self.assertTrue(finish - start >= two_seconds)
+        self.assertTrue(finish - start < three_seconds)
+
 # -- utilities -----------------------------------------------------------------
 
 def _find_data_directory():
