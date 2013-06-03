@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc LICENSE.txt
 
 %changelog
+* Mon Jun 03 2013 Jason L Connor <jason.connor@gmail.com> 0.97.0-1
+- initial pass at leaky bucket throttling algorithm (jason.connor@gmail.com)
+
 * Thu May 30 2013 Jason L Connor <jason.connor@gmail.com> 0.95.0-1
 - 967939 - added kwarg processing for ssl file and data configuration options
   that make both available via the configuration instance
