@@ -15,7 +15,7 @@
 from setuptools import setup, find_packages
 
 setup(name='nectar',
-      version='0.90.2',
+      version='0.97.0',
       url='https://github.com/pulp/nectar',
       description='Performance tuned network download client library',
       license='GPLv2',
@@ -41,6 +41,6 @@ setup(name='nectar',
 
       install_requires=['isodate >= 0.4.9',
                         'pycurl >= 7.19.0',
-                        'eventlet >= 0.12.0',
-                        'requests >= 1.2.0',],)
+                        'eventlet >= 0.9.17',
+                        'requests >= 1.1.0',],)
 

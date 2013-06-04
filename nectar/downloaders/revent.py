@@ -13,10 +13,11 @@
 
 # first, so that all subsequently imported modules are the monkey patched versions
 import eventlet
-eventlet.monkey_patch()
+eventlet.monkey_patch(thread=False)
 
 import datetime
 import httplib
+import time
 import urllib
 from logging import getLogger
 
@@ -32,6 +33,8 @@ _LOG = getLogger(__name__)
 DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192 # bytes
 DEFAULT_PROGRESS_INTERVAL = 5 # seconds
+
+ONE_SECOND = datetime.timedelta(seconds=1)
 
 # -- exception classes ---------------------------------------------------------
 
@@ -73,16 +76,28 @@ class HTTPEventletRequestsDownloader(Downloader):
         pool = eventlet.GreenPool(size=self.max_concurrent)
         session = build_session(self.config)
 
+        session.nectar_bytes_this_second = 0
+        session.nectar_time_bytes_this_second_was_cleared = datetime.datetime.now()
+
         def _session_generator():
             while True: yield session
 
         for report in pool.imap(self._fetch, request_list, _session_generator()):
+
             if report.state is DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
+
             else: # DOWNLOAD_FAILED
                 self.fire_download_failed(report)
 
     def _fetch(self, request, session):
+
+        max_speed = self.config.max_speed # None or integer in bytes/second
+
+        if max_speed is not None:
+            max_speed -= (2 * self.buffer_size) # because we test *after* reading and only sleep for 1/2 second
+            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go slower
+
         report = DownloadReport.from_download_request(request)
         report.download_started()
         self.fire_download_started(report)
@@ -108,14 +123,28 @@ class HTTPEventletRequestsDownloader(Downloader):
                     raise DownloadCancelled(request.url)
 
                 file_handle.write(chunk)
-                report.bytes_downloaded += len(chunk)
+
+                bytes_read = len(chunk)
+                report.bytes_downloaded += bytes_read
 
                 now = datetime.datetime.now()
-                if now - last_update_time < progress_interval:
-                    continue
 
-                last_update_time = now
-                self.fire_download_progress(report)
+                if now - last_update_time >= progress_interval:
+                    last_update_time = now
+                    self.fire_download_progress(report)
+
+                if now - session.nectar_time_bytes_this_second_was_cleared >= ONE_SECOND:
+                    session.nectar_bytes_this_second = 0
+                    session.nectar_time_bytes_this_second_was_cleared = now
+
+                session.nectar_bytes_this_second += bytes_read
+
+                if max_speed is not None and session.nectar_bytes_this_second >= max_speed:
+                    # it's not worth doing fancier mathematics than this, very
+                    # fine-grained sleep times [1] are not honored by the system
+                    # [1] for example, sleeping the remaining fraction of time
+                    # before this second is up
+                    time.sleep(0.5)
 
             self.fire_download_progress(report) # guarantee 1 report at the end
 
@@ -128,8 +157,6 @@ class HTTPEventletRequestsDownloader(Downloader):
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
             report.download_failed()
-
-        # XXX (jconnor-2013-04-18) handle requests-specific exceptions?
 
         except Exception, e:
             _LOG.exception(e)
