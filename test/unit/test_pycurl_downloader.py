@@ -532,6 +532,7 @@ class TestProcessCompletedDownload(base.NectarTests):
         self.assertEqual(report.error_report['response_code'], 0)
         self.assertEqual(report.error_report['error_code'], pycurl.E_COULDNT_CONNECT)
         self.assertEqual(report.error_report['error_message'], "Couldn't Connect")
+        self.assertEqual(report.error_msg, "Couldn't Connect")
         # It's difficult to know what the finish_time on the report will be exactly, so we'll just assert that
         # it's after the start_time we recorded earlier
         self.assertTrue(report.finish_time > start_time)
