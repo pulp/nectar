@@ -12,6 +12,7 @@
 # see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 from datetime import datetime
+from gettext import gettext as _
 
 from isodate import UTC
 
@@ -41,6 +42,8 @@ class DownloadReport(object):
     :ivar finish_time:      finish time of the file download
     :ivar error_report:     arbitrary dictionary containing debugging info in the event of a
                             failure
+    :ivar error_msg:        string field where an error message should be stored. This will likely
+                            be displayed to an end user.
     """
 
     @classmethod
@@ -74,6 +77,7 @@ class DownloadReport(object):
         self.start_time = None
         self.finish_time = None
         self.error_report = {}
+        self.error_msg = None
 
     # state management methods -------------------------------------------------
 
@@ -108,6 +112,9 @@ class DownloadReport(object):
         report's state the first time it is called. Subsequent calls to this
         method or download_succeeded or download_canceled amount to no-ops.
         """
+        # default message in case a downloader doesn't set an error message
+        if self.error_msg is None:
+            self.error_msg = _('Download Failed')
         self._download_finished(DOWNLOAD_FAILED)
 
     def download_canceled(self):
