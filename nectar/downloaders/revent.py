@@ -156,10 +156,12 @@ class HTTPEventletRequestsDownloader(Downloader):
             _LOG.error(str(e))
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
+            report.error_msg = e.args[2]
             report.download_failed()
 
         except Exception, e:
             _LOG.exception(e)
+            report.error_msg = str(e)
             report.download_failed()
 
         else:

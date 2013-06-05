@@ -253,6 +253,7 @@ class HTTPCurlDownloader(Downloader):
             if error:
                 report.error_report['error_code'] = error['code']
                 report.error_report['error_message'] = error['message']
+                report.error_msg = error['message']
 
         # Cleanup
         multi_handle.remove_handle(easy_handle)

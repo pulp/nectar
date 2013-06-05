@@ -178,6 +178,7 @@ class LiveDownloadingTests(base.NectarTests):
         self.assertFalse(os.path.exists(dest_path))
         self.assertEqual(len(lst.succeeded_reports), 0)
         self.assertEqual(len(lst.failed_reports), 1)
+        self.assertTrue(lst.failed_reports[0].error_msg is not None)
 
     def test_multiple_downloads(self):
         cfg = config.DownloaderConfig()
