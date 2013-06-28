@@ -43,6 +43,10 @@ class UnlinkableDestination(Exception):
 # -- local file downloader -----------------------------------------------------
 
 class LocalFileDownloader(Downloader):
+    """
+    Downloader class that handles local file URLs. It has the ability to hard
+    link files, symbolic link files, or copy files.
+    """
 
     @property
     def max_concurrent(self):
@@ -81,12 +85,45 @@ class LocalFileDownloader(Downloader):
     # -- types of downloads ----------------------------------------------------
 
     def _hard_link(self, request, report=None):
+        """
+        Hard link the source and destination together.
+
+        :param request: request instance
+        :type request: nectar.request.DownloadRequest
+        :param report: report instance for the request
+        :type report: nectar.report.DownloadReport
+        :return: report instance
+        :rtype: nectar.report.DownloadReport
+        """
         return self._common_link(os.link, request, report)
 
     def _symbolic_link(self, request, report=None):
+        """
+        Symbolic link the source and destination together.
+
+        :param request: request instance
+        :type request: nectar.request.DownloadRequest
+        :param report: report instance for the request
+        :type report: nectar.report.DownloadReport
+        :return: report instance
+        :rtype: nectar.report.DownloadReport
+        """
         return self._common_link(os.symlink, request, report)
 
     def _copy(self, request, report=None):
+        """
+        Copy the source file to the destination.
+
+        This is the default behavior and most useful for files that live on
+        different disk partitions or networked file systems.
+
+        :param request: request instance
+        :type request: nectar.request.DownloadRequest
+        :param report: report instance for the request
+        :type report: nectar.report.DownloadReport
+        :return: report instance
+        :rtype: nectar.report.DownloadReport
+        """
 
         report = report or DownloadReport.from_download_request(request)
         src_handle = None
@@ -142,11 +179,20 @@ class LocalFileDownloader(Downloader):
     # -- common link function --------------------------------------------------
 
     def _common_link(self, link_method, request, report=None):
+        """
+        Link files using either a hard link or symbolic link method.
+
+        :param link_method: hard link or symbolic link method
+        :type link_method: callable
+        :param request: request instance
+        :type request: nectar.request.DownloadRequest
+        :param report: report instance for the request
+        :type report: nectar.report.DownloadReport
+        :return: report instance
+        :rtype: nectar.report.DownloadReport
+        """
 
         report = report or DownloadReport.from_download_request(request)
-
-        if not isinstance(request.destination, basestring):
-            raise UnlinkableDestination(request.destination)
 
         self.fire_download_started(report)
 
@@ -155,6 +201,9 @@ class LocalFileDownloader(Downloader):
             return report
 
         try:
+            if not isinstance(request.destination, basestring):
+                raise UnlinkableDestination(request.destination)
+
             src_path = self._file_path_from_url(request.url)
             link_method(src_path, request.destination)
 
@@ -172,6 +221,15 @@ class LocalFileDownloader(Downloader):
     # -- utility functions -----------------------------------------------------
 
     def _file_path_from_url(self, url):
+        """
+        Strip off the url scheme and return the absolute path to the local file.
+
+        :param url: URL to parse
+        :type url: basestring
+        :return: absolute file path
+        :rtype: str
+        :raises ValueError: if the URL is not for a local file
+        """
         scheme, file_path = urllib.splittype(url)
 
         if not scheme.startswith('file'):
@@ -180,6 +238,16 @@ class LocalFileDownloader(Downloader):
         return file_path
 
     def _get_write_buffer_size(self, destination):
+        """
+        This functions attempts to find an optimal buffer size for the output
+        file by looking up the file system block size of the destination's
+        directory. If the destination's path is not know, or the block size
+        cannot be determined, it returns the global default buffer size.
+
+        :param destination: outfile handle or location
+        :return: buffer size for destination
+        :rtype: int
+        """
         if not isinstance(destination, basestring):
             return DEFAULT_BUFFER_SIZE
 
