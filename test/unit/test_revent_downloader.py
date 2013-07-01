@@ -11,21 +11,27 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
+from cStringIO import StringIO
 import datetime
+import httplib
 import os
 import random
 import shutil
 import string
 import tempfile
+import unittest
 import urllib
 
 import mock
+from requests import Response
 
 import base
 import http_static_test_server
 
 from nectar import config, listener, report, request
 from nectar.downloaders import revent
+from nectar.report import DOWNLOAD_SUCCEEDED
+from nectar.request import DownloadRequest
 
 # -- instantiation tests -------------------------------------------------------
 
@@ -224,6 +230,45 @@ class LiveDownloadingTests(base.NectarTests):
 
         self.assertTrue(finish - start >= two_seconds)
         self.assertTrue(finish - start < three_seconds)
+
+
+class TestFetch(unittest.TestCase):
+    def setUp(self):
+        self.config = config.DownloaderConfig()
+        self.listener = listener.AggregatingEventListener()
+        self.downloader = revent.HTTPEventletRequestsDownloader(self.config, self.listener)
+
+    def test_wrong_content_encoding(self):
+        URL = 'http://pulpproject.org/primary.xml.gz'
+        req = DownloadRequest(URL, StringIO())
+        response = Response()
+        response.status_code = httplib.OK
+        response.raw = StringIO('abc')
+        session = revent.build_session(self.config)
+        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+
+        report = self.downloader._fetch(req, session)
+
+        self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
+        self.assertEqual(report.bytes_downloaded, 3)
+        session.get.assert_called_once_with(URL, headers={'accept-encoding':''})
+
+    def test_normal_content_encoding(self):
+        URL = 'http://pulpproject.org/primary.xml'
+        req = DownloadRequest(URL, StringIO())
+        response = Response()
+        response.status_code = httplib.OK
+        response.iter_content = mock.MagicMock(return_value=['abc'], spec_set=response.iter_content)
+        session = revent.build_session(self.config)
+        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+
+        report = self.downloader._fetch(req, session)
+
+        self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
+        self.assertEqual(report.bytes_downloaded, 3)
+        # passing "None" for headers lets the requests library add whatever
+        # headers it thinks are appropriate.
+        session.get.assert_called_once_with(URL, headers=None)
 
 # -- utilities -----------------------------------------------------------------
 
