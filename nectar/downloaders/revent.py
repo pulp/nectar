@@ -19,6 +19,7 @@ import datetime
 import httplib
 import time
 import urllib
+import urlparse
 from logging import getLogger
 
 import requests
@@ -76,9 +77,6 @@ class HTTPEventletRequestsDownloader(Downloader):
         pool = eventlet.GreenPool(size=self.max_concurrent)
         session = build_session(self.config)
 
-        session.nectar_bytes_this_second = 0
-        session.nectar_time_bytes_this_second_was_cleared = datetime.datetime.now()
-
         def _session_generator():
             while True: yield session
 
@@ -90,7 +88,48 @@ class HTTPEventletRequestsDownloader(Downloader):
             else: # DOWNLOAD_FAILED
                 self.fire_download_failed(report)
 
+    @staticmethod
+    def chunk_generator(raw, chunk_size):
+        """
+        Return a generator of chunks from a file-like object
+
+        :param raw:         the "raw" object from a Response object
+        :type  raw:         file
+
+        :param chunk_size:  size in bytes that should be read into one chunk
+        :type  chunk_size:  int
+
+        :return:    generator of chunks
+        :rtype:     generator
+        """
+        while True:
+            chunk = raw.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+
     def _fetch(self, request, session):
+        """
+        :param request: download request object with details about what to
+                        download and where to put it
+        :type  request: nectar.request.DownloadRequest
+        :param session: session object used by the requests library
+        :type  session: requests.sessions.Session
+        """
+        # this is to deal with broken web servers that violate RFC 2616 by sending
+        # a header 'content-encoding: x-gzip' when it's really just a gzipped
+        # file. In that case, we must ignore the declared encoding and thus prevent
+        # the requests library from automatically decompressing the file.
+        parse_url = urlparse.urlparse(request.url)
+        if parse_url.path.endswith('.gz'):
+            ignore_encoding = True
+            # declare that we don't accept any encodings, so that if we do still
+            # get a content-encoding value in the response, we know for sure the
+            # other end is broken/misbehaving.
+            headers = {'accept-encoding': ''}
+        else:
+            ignore_encoding = False
+            headers = None
 
         max_speed = self.config.max_speed # None or integer in bytes/second
 
@@ -106,7 +145,7 @@ class HTTPEventletRequestsDownloader(Downloader):
             if self.is_canceled:
                 raise DownloadCancelled(request.url)
 
-            response = session.get(request.url)
+            response = session.get(request.url, headers=headers)
 
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
@@ -117,8 +156,12 @@ class HTTPEventletRequestsDownloader(Downloader):
             last_update_time = datetime.datetime.now()
             self.fire_download_progress(report) # guarantee 1 report at the beginning
 
-            for chunk in response.iter_content(self.buffer_size):
+            if ignore_encoding:
+                chunks = self.chunk_generator(response.raw, self.buffer_size)
+            else:
+                chunks = response.iter_content(self.buffer_size)
 
+            for chunk in chunks:
                 if self.is_canceled:
                     raise DownloadCancelled(request.url)
 
@@ -180,6 +223,9 @@ def build_session(config):
     _add_basic_auth(session, config)
     _add_ssl(session, config)
     _add_proxy(session, config)
+    session.nectar_bytes_this_second = 0
+    session.nectar_time_bytes_this_second_was_cleared = datetime.datetime.now()
+
     return session
 
 
