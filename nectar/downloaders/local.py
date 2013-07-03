@@ -11,11 +11,8 @@
 # You should have received a copy of GPLv2 along with this software;
 # if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
-# first, so that all subsequently imported modules are the monkey patched versions
-import eventlet
-eventlet.monkey_patch(thread=False)
-
 import datetime
+import itertools
 import logging
 import os
 import urllib
@@ -28,7 +25,6 @@ from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
 _LOG = logging.getLogger(__name__)
 
-DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 4096 # typical fs block size, in bytes
 DEFAULT_PROGRESS_INTERVAL = 5 # seconds
 
@@ -47,10 +43,6 @@ class LocalFileDownloader(Downloader):
     Downloader class that handles local file URLs. It has the ability to hard
     link files, symbolic link files, or copy files.
     """
-
-    @property
-    def max_concurrent(self):
-        return self.config.get('max_concurrent', DEFAULT_MAX_CONCURRENT)
 
     @property
     def progress_interval(self):
@@ -72,9 +64,7 @@ class LocalFileDownloader(Downloader):
 
     def download(self, request_list):
 
-        pool = eventlet.GreenPool(size=self.max_concurrent)
-
-        for report in pool.imap(self.download_method, request_list):
+        for report in itertools.imap(self.download_method, request_list):
 
             if report.state is DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
@@ -126,6 +116,7 @@ class LocalFileDownloader(Downloader):
         """
 
         report = report or DownloadReport.from_download_request(request)
+        report.download_started()
         src_handle = None
 
         try:
@@ -194,6 +185,7 @@ class LocalFileDownloader(Downloader):
 
         report = report or DownloadReport.from_download_request(request)
 
+        report.download_started()
         self.fire_download_started(report)
 
         if self.is_canceled:
