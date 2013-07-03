@@ -46,6 +46,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc LICENSE.txt
 
 %changelog
+* Wed Jul 03 2013 Jeff Ortel <jortel@redhat.com> 0.99-2
+- 979582 - nectar now compensates for servers that send an incorrect content-
+  encoding header for files that are gzipped. (mhrivnak@redhat.com)
+
 * Wed Jun 05 2013 Jay Dobies <jason.dobies@redhat.com> 0.99-1
 - Tweaking the version numbering until we come out with 1.0 to make it play
   nicer with tito (jason.dobies@redhat.com)
