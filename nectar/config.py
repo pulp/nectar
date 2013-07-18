@@ -82,7 +82,7 @@ class DownloaderConfig(object):
             return
 
         if max_concurrent <= 0:
-            raise AttributeError('max_concurrent must be greater than 0')
+            raise ValueError('max_concurrent must be greater than 0')
 
         kwargs['max_concurrent'] = max_concurrent
 

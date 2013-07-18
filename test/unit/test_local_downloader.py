@@ -196,7 +196,7 @@ class PerformanceDownloadTests(DownloadTests):
 class BadDownloadTests(DownloadTests):
 
     def test_unsupported_url_scheme(self):
-        config = DownloaderConfig(use_sym_lilnks=True)
+        config = DownloaderConfig(use_sym_links=True)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
@@ -221,7 +221,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.failed_reports), 1)
 
     def test_source_not_found(self):
-        config = DownloaderConfig(use_sym_lilnks=True)
+        config = DownloaderConfig(use_sym_links=True)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
@@ -233,7 +233,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.failed_reports), 1)
 
     def test_destination_not_found(self):
-        config = DownloaderConfig(use_sym_lilnks=True)
+        config = DownloaderConfig(use_sym_links=True)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
@@ -246,7 +246,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.failed_reports), 1)
 
     def test_source_bad_permissions(self):
-        config = DownloaderConfig(use_sym_lilnks=True)
+        config = DownloaderConfig(use_sym_links=True)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
@@ -258,7 +258,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.failed_reports), 1)
 
     def test_destination_bad_permissions(self):
-        config = DownloaderConfig(use_sym_lilnks=True)
+        config = DownloaderConfig(use_sym_links=True)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 

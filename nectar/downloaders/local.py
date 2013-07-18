@@ -25,7 +25,7 @@ from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
 _LOG = logging.getLogger(__name__)
 
-DEFAULT_BUFFER_SIZE = 4096 # typical fs block size, in bytes
+DEFAULT_BUFFER_SIZE = 1048576 # 1 MB in bytes
 DEFAULT_PROGRESS_INTERVAL = 5 # seconds
 
 # -- exceptions ----------------------------------------------------------------
@@ -43,6 +43,18 @@ class LocalFileDownloader(Downloader):
     Downloader class that handles local file URLs. It has the ability to hard
     link files, symbolic link files, or copy files.
     """
+
+    @property
+    def buffer_size(self):
+        buffer_size_str = self.config.buffer_size
+
+        if buffer_size_str is None:
+            return DEFAULT_BUFFER_SIZE
+
+        try:
+            return int(buffer_size_str)
+        except ValueError:
+            return DEFAULT_BUFFER_SIZE
 
     @property
     def progress_interval(self):
@@ -66,7 +78,7 @@ class LocalFileDownloader(Downloader):
 
         for report in itertools.imap(self.download_method, request_list):
 
-            if report.state is DOWNLOAD_SUCCEEDED:
+            if report.state == DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
 
             else: # DOWNLOAD_FAILED
@@ -123,7 +135,7 @@ class LocalFileDownloader(Downloader):
             src_path = self._file_path_from_url(request.url)
             src_handle = open(src_path, 'rb')
             dst_handle = request.initialize_file_handle()
-            buffer_size = self._get_write_buffer_size(request.destination)
+            buffer_size = self.buffer_size
 
             self.fire_download_started(report)
             last_progress_update = datetime.datetime.now()
@@ -228,26 +240,4 @@ class LocalFileDownloader(Downloader):
             raise ValueError('Unsupported scheme: %s' % scheme)
 
         return file_path
-
-    def _get_write_buffer_size(self, destination):
-        """
-        This functions attempts to find an optimal buffer size for the output
-        file by looking up the file system block size of the destination's
-        directory. If the destination's path is not know, or the block size
-        cannot be determined, it returns the global default buffer size.
-
-        :param destination: outfile handle or location
-        :return: buffer size for destination
-        :rtype: int
-        """
-        if not isinstance(destination, basestring):
-            return DEFAULT_BUFFER_SIZE
-
-        dest_dir = os.path.dirname(destination)
-
-        if not os.path.exists(dest_dir):
-            return DEFAULT_BUFFER_SIZE
-
-        stat_info = os.stat(dest_dir)
-        return getattr(stat_info, 'st_blksize', DEFAULT_BUFFER_SIZE)
 
