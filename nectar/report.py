@@ -35,15 +35,16 @@ class DownloadReport(object):
                             filesystem path to the file, or a file-like object
     :ivar state:            current state of the download (waiting, downloading, succeeded, failed,
                             canceled)
+    :ivar data:             arbitrary data provided at instantiation
     :ivar total_bytes:      total bytes of the file to be downloaded, None if this could not be
                             determined
     :ivar bytes_downloaded: bytes of the file downloaded so far
     :ivar start_time:       start time of the file download
     :ivar finish_time:      finish time of the file download
-    :ivar error_report:     arbitrary dictionary containing debugging info in the event of a
-                            failure
     :ivar error_msg:        string field where an error message should be stored. This will likely
                             be displayed to an end user.
+    :ivar error_report:     arbitrary dictionary containing debugging info in the event of a
+                            failure
     """
 
     @classmethod
@@ -72,12 +73,15 @@ class DownloadReport(object):
         self.data = data
 
         self.state = DOWNLOAD_WAITING
+
         self.total_bytes = None
         self.bytes_downloaded = 0
+
         self.start_time = None
         self.finish_time = None
-        self.error_report = {}
+
         self.error_msg = None
+        self.error_report = {}
 
     # state management methods -------------------------------------------------
 
