@@ -46,6 +46,13 @@ rm -rf $RPM_BUILD_ROOT
 %doc LICENSE.txt
 
 %changelog
+* Wed Jul 31 2013 Jeff Ortel <jortel@redhat.com> 1.0.0-1
+- got rid of fancy eventlet concurrency, regular os operations are faster;
+  fixed bug where the report state was never started (jason.connor@gmail.com)
+- fixed bug that sets mex_concurrent to None when max_concurrent is not
+  provided (jason.connor@gmail.com)
+- initial attempt at implementing an eventlet-based local file downloader
+  (jason.connor@gmail.com)
 * Wed Jul 03 2013 Jeff Ortel <jortel@redhat.com> 0.99-2
 - 979582 - nectar now compensates for servers that send an incorrect content-
   encoding header for files that are gzipped. (mhrivnak@redhat.com)
