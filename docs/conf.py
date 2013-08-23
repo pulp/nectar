@@ -48,7 +48,7 @@ copyright = u'2013, Pulp Team'
 # built documents.
 #
 # The short X.Y version.
-version = '0.97.0'
+version = '1.1.0'
 # The full version, including alpha/beta/rc tags.
 #release = '2'
 release = version
