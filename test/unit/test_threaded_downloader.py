@@ -21,6 +21,7 @@ import string
 import tempfile
 import unittest
 import urllib
+from Queue import Queue
 
 import mock
 from requests import Response
@@ -76,50 +77,7 @@ class InstantiationTests(base.NectarTests):
                                                                      proxy_host,
                                                                      kwargs['proxy_port'])})
 
-# -- mocked tests --------------------------------------------------------------
-
-class MockDownloadingTests(base.NectarTests):
-
-    def test_mock_fetch_succeeded(self):
-        url_list = _generate_urls(1)
-        request_list = [request.DownloadRequest(url, '/tmp/') for url in url_list]
-        rep = report.DownloadReport.from_download_request(request_list[0])
-        rep.state = report.DOWNLOAD_SUCCEEDED
-
-        cfg = config.DownloaderConfig()
-        lst = listener.AggregatingEventListener()
-
-        downloader = threaded.HTTPThreadedDownloader(cfg, lst)
-        downloader._fetch = mock.MagicMock()
-        downloader._fetch.return_value = rep
-
-        downloader.download(request_list)
-
-        self.assertEqual(downloader._fetch.call_count, 1)
-        self.assertEqual(len(lst.failed_reports), 0)
-        self.assertEqual(len(lst.succeeded_reports), 1)
-
-    def test_mock_fetch_failed(self):
-        url_list = _generate_urls(1)
-        request_list = [request.DownloadRequest(url, '/tmp/') for url in url_list]
-        rep = report.DownloadReport.from_download_request(request_list[0])
-        rep.state = report.DOWNLOAD_FAILED
-
-        cfg = config.DownloaderConfig()
-        lst = listener.AggregatingEventListener()
-
-        downloader = threaded.HTTPThreadedDownloader(cfg, lst)
-        downloader._fetch = mock.MagicMock()
-        downloader._fetch.return_value = rep
-
-        downloader.download(request_list)
-
-        self.assertEqual(downloader._fetch.call_count, 1)
-        self.assertEqual(len(lst.failed_reports), 1)
-        self.assertEqual(len(lst.succeeded_reports), 0)
-
 # -- "live" tests --------------------------------------------------------------
-
 
 class LiveDownloadingTests(base.NectarTests):
 
@@ -246,8 +204,10 @@ class TestFetch(unittest.TestCase):
         response.raw = StringIO('abc')
         session = threaded.build_session(self.config)
         session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+        report_queue = Queue()
 
-        report = self.downloader._fetch(req, session)
+        self.downloader._fetch(req, session, report_queue)
+        report, f = report_queue.get()
 
         self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
@@ -261,8 +221,10 @@ class TestFetch(unittest.TestCase):
         response.iter_content = mock.MagicMock(return_value=['abc'], spec_set=response.iter_content)
         session = threaded.build_session(self.config)
         session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+        report_queue = Queue()
 
-        report = self.downloader._fetch(req, session)
+        self.downloader._fetch(req, session, report_queue)
+        report, f = report_queue.get()
 
         self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
