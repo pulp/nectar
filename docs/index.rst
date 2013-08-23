@@ -24,6 +24,7 @@ The Downloaders:
    downloaders/api
    downloaders/curl
    downloaders/revent
+   downloaders/threaded
 
 
 Indices and tables
