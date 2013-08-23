@@ -22,6 +22,11 @@ from logging import getLogger
 
 import requests
 
+try:
+    from requests.packages.urllib3.connectionpool import ClosedPoolError
+except ImportError:
+    from urllib3.connectionpool import ClosedPoolError
+
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
@@ -32,6 +37,7 @@ _LOG = getLogger(__name__)
 DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192 # bytes
 DEFAULT_PROGRESS_INTERVAL = 5 # seconds
+DEFAULT_RETRIES = 3
 
 ONE_SECOND = datetime.timedelta(seconds=1)
 
@@ -206,11 +212,23 @@ class HTTPThreadedDownloader(Downloader):
         report.download_started()
         report_queue.put((report, self.fire_download_started))
 
+        retries = DEFAULT_RETRIES
+
         try:
             if self.is_canceled:
                 raise DownloadCancelled(request.url)
 
-            response = session.get(request.url, headers=headers)
+            response = None
+
+            while True:
+                try:
+                    response = session.get(request.url, headers=headers)
+                except ClosedPoolError:
+                    retries -= 1
+                    if retries <= 0:
+                        raise
+                else:
+                    break
 
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
