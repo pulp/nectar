@@ -46,6 +46,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc LICENSE.txt
 
 %changelog
+* Fri Aug 23 2013 Jason L Connor <jason.connor@gmail.com> 1.1.0-1
+- new threaded downloader and unit tests (jason.connor@gmail.com)
+- bumped nectar version to 1.1 (jason.connor@gmail.com)
+
 * Wed Jul 31 2013 Jeff Ortel <jortel@redhat.com> 1.0.0-1
 - got rid of fancy eventlet concurrency, regular os operations are faster;
   fixed bug where the report state was never started (jason.connor@gmail.com)
