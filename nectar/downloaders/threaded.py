@@ -251,6 +251,9 @@ class HTTPThreadedDownloader(Downloader):
         else: # DOWNLOAD_FAILED
             self.fire_download_failed(report)
 
+        # used for testing purposes
+        return report
+
     def _fire_event_to_listener(self, event_listener_callback, *args, **kwargs):
         # thread-safe event firing
         with self._event_lock:
