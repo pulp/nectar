@@ -89,14 +89,11 @@ class HTTPThreadedDownloader(Downloader):
         :type  queue:       WorkerQueue
 
         """
-        session = build_session(self.config)
+        try:
+            session = build_session(self.config)
 
-        while True:
-            try:
+            while True:
                 request = queue.get()
-            except Queue.Empty:
-                session.close()
-                break
 
                 if request is None:
                     session.close()
@@ -311,15 +308,10 @@ class WorkerQueue(object):
     def __init__(self, iterable):
 
         self._iterable = iterable
-        self._generator = self._generator_wrapper(self._iterable)
+        self._generator = _generator_wrapper(self._iterable)
 
         self._lock = threading.Lock()
         self._empty_event = threading.Event()
-
-    def _generator_wrapper(self, iterator):
-        # support next() for iterables, without screwing up iterators or generators
-        for i in iterator:
-            yield i
 
     def get(self):
         with self._lock:
@@ -327,8 +319,13 @@ class WorkerQueue(object):
                 return next(self._generator)
             except StopIteration:
                 self._empty_event.set()
-                raise Queue.Empty()
+            return None
 
     def join(self):
         self._empty_event.wait()
 
+
+def _generator_wrapper(iterator):
+    # support next() for iterables, without screwing up iterators or generators
+    for i in iterator:
+        yield i
