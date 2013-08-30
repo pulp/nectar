@@ -22,11 +22,6 @@ from logging import getLogger
 
 import requests
 
-try:
-    from requests.packages.urllib3.connectionpool import ClosedPoolError
-except ImportError:
-    from urllib3.connectionpool import ClosedPoolError
-
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
@@ -59,9 +54,17 @@ class DownloadFailed(Exception):
 
 class HTTPThreadedDownloader(Downloader):
     """
-    Downloader class that uses the third party Eventlets with Requests to handle
+    Downloader class that uses native Python threads with Requests to handle
     HTTP, HTTPS and proxied download requests by the server.
     """
+
+    def __init__(self, config, event_listener=None):
+        super(HTTPThreadedDownloader, self).__init__(config, event_listener)
+
+        # throttling support
+        self._bytes_lock = threading.Lock()
+        self._bytes_this_second = 0
+        self._time_bytes_this_second_was_cleared = datetime.datetime.now()
 
     @property
     def buffer_size(self):
@@ -78,7 +81,7 @@ class HTTPThreadedDownloader(Downloader):
 
     def progress_reporter(self, queue):
         """
-        Useful in a thread to fire reports. See below for the sentinal value that
+        Useful in a thread to fire reports. See below for the sentinel value that
         signals the thread to end.
 
         :param queue:   queue that will contain tuples where the first member
@@ -96,16 +99,10 @@ class HTTPThreadedDownloader(Downloader):
             report_func(report)
             queue.task_done()
 
-    def worker(self, queue, queue_ready, session, report_queue):
+    def worker(self, queue, report_queue):
         """
         :param queue:       queue of DownloadRequest instances
         :type  queue:       Queue.Queue
-        :param queue_ready: threading event that signals when the queue has been
-                            sufficiently populated that it is ready for workers
-                            to start
-        :type  queue_ready: threading.Event
-        :param session:     Session instance
-        :type  session:     requests.sessions.Session
         :param report_queue:queue where DownloadReport instances can be dropped
                             for reporting. Each item added should be a tuple
                             with the first member a DownloadReport instance, and
@@ -113,51 +110,38 @@ class HTTPThreadedDownloader(Downloader):
         :type  report_queue:Queue.Queue
 
         """
-        queue_ready.wait()
-        while not self.is_canceled:
-            try:
-                request = queue.get_nowait()
-            except Queue.Empty:
-                break
-            self._fetch(request, session, report_queue)
-            queue.task_done()
+        session = build_session(self.config)
 
-    def feed_queue(self, queue, queue_ready, request_list):
-        """
-        takes DownloadRequests off of an iterator (which could be a generator),
-        and adds them to a queue. This is only useful if the queue has a size
-        limit. Sets queue_ready when the queue is full enough for workers to start.
-        """
-        for request in request_list:
-            if self.is_canceled:
+        while True:
+            try:
+                request = queue.get()
+            except Queue.Empty:
+                session.close()
                 break
-            queue.put(request)
-            if queue.full() and not queue_ready.is_set():
-                queue_ready.set()
-        # call again in case we never filled up the queue
-        if not queue_ready.is_set():
-            queue_ready.set()
+
+            try:
+                self._fetch(request, session, report_queue)
+            finally:
+                queue.task_done()
 
     def download(self, request_list):
-        session = build_session(self.config)
-        queue = Queue.Queue(maxsize=self.max_concurrent*3)
-        queue_ready = threading.Event()
+        queue = WorkerQueue(request_list)
         report_queue = Queue.Queue()
+
         _LOG.debug('starting feed queue thread')
-        feeder = threading.Thread(target=self.feed_queue, args=[queue, queue_ready, request_list])
-        threading.Thread(target=self.progress_reporter, args=[report_queue]).start()
+        report_thread = threading.Thread(target=self.progress_reporter, args=[report_queue])
+        report_thread.setDaemon(True)
+        report_thread.start()
 
         _LOG.debug('starting workers')
         for i in range(self.max_concurrent):
-            threading.Thread(target=self.worker, args=[queue, queue_ready, session, report_queue]).start()
-
-        feeder.start()
-        feeder.join()
+            worker_thread = threading.Thread(target=self.worker, args=[queue, report_queue])
+            worker_thread.setDaemon(True)
+            worker_thread.start()
 
         queue.join()
         report_queue.join()
         report_queue.put((True, None))
-        session.close()
 
     @staticmethod
     def chunk_generator(raw, chunk_size):
@@ -212,23 +196,11 @@ class HTTPThreadedDownloader(Downloader):
         report.download_started()
         report_queue.put((report, self.fire_download_started))
 
-        retries = DEFAULT_RETRIES
-
         try:
             if self.is_canceled:
                 raise DownloadCancelled(request.url)
 
-            response = None
-
-            while True:
-                try:
-                    response = session.get(request.url, headers=headers)
-                except ClosedPoolError:
-                    retries -= 1
-                    if retries <= 0:
-                        raise
-                else:
-                    break
+            response = session.get(request.url, headers=headers)
 
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
@@ -259,13 +231,13 @@ class HTTPThreadedDownloader(Downloader):
                     last_update_time = now
                     report_queue.put((report, self.fire_download_progress))
 
-                with session.nectar_bytes_lock:
-                    if now - session.nectar_time_bytes_this_second_was_cleared >= ONE_SECOND:
-                        session.nectar_bytes_this_second = 0
-                        session.nectar_time_bytes_this_second_was_cleared = now
-                    session.nectar_bytes_this_second += bytes_read
+                with self._bytes_lock:
+                    if now - self._time_bytes_this_second_was_cleared >= ONE_SECOND:
+                        self._bytes_this_second = 0
+                        self._time_bytes_this_second_was_cleared = now
+                    self._bytes_this_second += bytes_read
 
-                if max_speed is not None and session.nectar_bytes_this_second >= max_speed:
+                if max_speed is not None and self._bytes_this_second >= max_speed:
                     # it's not worth doing fancier mathematics than this, very
                     # fine-grained sleep times [1] are not honored by the system
                     # [1] for example, sleeping the remaining fraction of time
@@ -310,9 +282,6 @@ def build_session(config):
     _add_basic_auth(session, config)
     _add_ssl(session, config)
     _add_proxy(session, config)
-    session.nectar_bytes_this_second = 0
-    session.nectar_time_bytes_this_second_was_cleared = datetime.datetime.now()
-    session.nectar_bytes_lock = threading.Lock()
 
     return session
 
@@ -349,4 +318,26 @@ def _add_proxy(session, config):
         url = '@'.join((auth, url))
 
     session.proxies[protocol] = url
+
+# -- thread-safe generator queue -----------------------------------------------
+
+class WorkerQueue(object):
+
+    def __init__(self, generator):
+        self._generator = iter(generator)
+
+        self._lock = threading.Lock()
+        self._empty_event = threading.Event()
+
+    def get(self):
+        with self._lock:
+            try:
+                return next(self._generator)
+            except StopIteration:
+                self._empty_event.set()
+                raise Queue.Empty()
+
+    def join(self):
+        self._empty_event.wait()
+
 
