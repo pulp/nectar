@@ -66,6 +66,9 @@ class HTTPThreadedDownloader(Downloader):
         self._bytes_this_second = 0
         self._time_bytes_this_second_was_cleared = datetime.datetime.now()
 
+        # thread-safety when firing events
+        self._event_lock = threading.Lock()
+
     @property
     def buffer_size(self):
         return self.config.buffer_size or DEFAULT_BUFFER_SIZE
@@ -79,35 +82,11 @@ class HTTPThreadedDownloader(Downloader):
         seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
         return datetime.timedelta(seconds=seconds)
 
-    def progress_reporter(self, queue):
-        """
-        Useful in a thread to fire reports. See below for the sentinel value that
-        signals the thread to end.
 
-        :param queue:   queue that will contain tuples where the first member
-                        is a DownloadReport, and the second member is a function
-                        to call with that report. The function should handle
-                        the firing of that report. If the first member is anything
-                        besides a DownloadReport, this function will return.
-        :type  queue:   Queue.Queue
-        """
-        while True:
-            report, report_func = queue.get()
-            if not isinstance(report, DownloadReport):
-                # done!
-                break
-            report_func(report)
-            queue.task_done()
-
-    def worker(self, queue, report_queue):
+    def worker(self, queue):
         """
         :param queue:       queue of DownloadRequest instances
         :type  queue:       WorkerQueue
-        :param report_queue:queue where DownloadReport instances can be dropped
-                            for reporting. Each item added should be a tuple
-                            with the first member a DownloadReport instance, and
-                            the second member a function to call with that report
-        :type  report_queue:Queue.Queue
 
         """
         session = build_session(self.config)
@@ -119,26 +98,29 @@ class HTTPThreadedDownloader(Downloader):
                 session.close()
                 break
 
-            self._fetch(request, session, report_queue)
+                if request is None:
+                    session.close()
+                    break
+
+                self._fetch(request, session)
+
+        except:
+            _LOG.exception('Unhandled Exception in Worker Thread [%s]' % threading.currentThread().ident)
 
     def download(self, request_list):
+        worker_threads = []
         queue = WorkerQueue(request_list)
-        report_queue = Queue.Queue()
-
-        _LOG.debug('starting feed queue thread')
-        report_thread = threading.Thread(target=self.progress_reporter, args=[report_queue])
-        report_thread.setDaemon(True)
-        report_thread.start()
 
         _LOG.debug('starting workers')
         for i in range(self.max_concurrent):
-            worker_thread = threading.Thread(target=self.worker, args=[queue, report_queue])
+            worker_thread = threading.Thread(target=self.worker, args=[queue])
             worker_thread.setDaemon(True)
             worker_thread.start()
+            worker_threads.append(worker_thread)
 
         queue.join()
-        report_queue.join()
-        report_queue.put((True, None))
+        for thread in worker_threads:
+            thread.join()
 
     @staticmethod
     def chunk_generator(raw, chunk_size):
@@ -160,7 +142,7 @@ class HTTPThreadedDownloader(Downloader):
                 break
             yield chunk
 
-    def _fetch(self, request, session, report_queue):
+    def _fetch(self, request, session):
         """
         :param request: download request object with details about what to
                         download and where to put it
@@ -173,12 +155,14 @@ class HTTPThreadedDownloader(Downloader):
         # file. In that case, we must ignore the declared encoding and thus prevent
         # the requests library from automatically decompressing the file.
         parse_url = urlparse.urlparse(request.url)
+
         if parse_url.path.endswith('.gz'):
             ignore_encoding = True
             # declare that we don't accept any encodings, so that if we do still
             # get a content-encoding value in the response, we know for sure the
             # other end is broken/misbehaving.
             headers = {'accept-encoding': ''}
+
         else:
             ignore_encoding = False
             headers = None
@@ -191,7 +175,7 @@ class HTTPThreadedDownloader(Downloader):
 
         report = DownloadReport.from_download_request(request)
         report.download_started()
-        report_queue.put((report, self.fire_download_started))
+        self.fire_download_started(report)
 
         try:
             if self.is_canceled:
@@ -206,7 +190,7 @@ class HTTPThreadedDownloader(Downloader):
             file_handle = request.initialize_file_handle()
 
             last_update_time = datetime.datetime.now()
-            report_queue.put((report, self.fire_download_progress))
+            self.fire_download_progress(report)
 
             if ignore_encoding:
                 chunks = self.chunk_generator(response.raw, self.buffer_size)
@@ -226,7 +210,7 @@ class HTTPThreadedDownloader(Downloader):
 
                 if now - last_update_time >= progress_interval:
                     last_update_time = now
-                    report_queue.put((report, self.fire_download_progress))
+                    self.fire_download_progress(report)
 
                 with self._bytes_lock:
                     if now - self._time_bytes_this_second_was_cleared >= ONE_SECOND:
@@ -242,7 +226,7 @@ class HTTPThreadedDownloader(Downloader):
                     time.sleep(0.5)
 
             # guarantee 1 report at the end
-            report_queue.put((report, self.fire_download_progress))
+            self.fire_download_progress(report)
 
         except DownloadCancelled, e:
             _LOG.debug(str(e))
@@ -266,9 +250,14 @@ class HTTPThreadedDownloader(Downloader):
         request.finalize_file_handle()
 
         if report.state is DOWNLOAD_SUCCEEDED:
-            report_queue.put((report, self.fire_download_succeeded))
+            self.fire_download_succeeded(report)
         else: # DOWNLOAD_FAILED
-            report_queue.put((report, self.fire_download_failed))
+            self.fire_download_failed(report)
+
+    def _fire_event_to_listener(self, event_listener_callback, *args, **kwargs):
+        # thread-safe event firing
+        with self._event_lock:
+            super(HTTPThreadedDownloader, self)._fire_event_to_listener(event_listener_callback, *args, **kwargs)
 
 # -- requests utilities --------------------------------------------------------
 
