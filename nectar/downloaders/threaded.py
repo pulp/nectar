@@ -102,7 +102,7 @@ class HTTPThreadedDownloader(Downloader):
     def worker(self, queue, report_queue):
         """
         :param queue:       queue of DownloadRequest instances
-        :type  queue:       Queue.Queue
+        :type  queue:       WorkerQueue
         :param report_queue:queue where DownloadReport instances can be dropped
                             for reporting. Each item added should be a tuple
                             with the first member a DownloadReport instance, and
@@ -119,10 +119,7 @@ class HTTPThreadedDownloader(Downloader):
                 session.close()
                 break
 
-            try:
-                self._fetch(request, session, report_queue)
-            finally:
-                queue.task_done()
+            self._fetch(request, session, report_queue)
 
     def download(self, request_list):
         queue = WorkerQueue(request_list)
@@ -266,8 +263,7 @@ class HTTPThreadedDownloader(Downloader):
         else:
             report.download_succeeded()
 
-        finally:
-            request.finalize_file_handle()
+        request.finalize_file_handle()
 
         if report.state is DOWNLOAD_SUCCEEDED:
             report_queue.put((report, self.fire_download_succeeded))
@@ -323,11 +319,18 @@ def _add_proxy(session, config):
 
 class WorkerQueue(object):
 
-    def __init__(self, generator):
-        self._generator = iter(generator)
+    def __init__(self, iterable):
+
+        self._iterable = iterable
+        self._generator = self._generator_wrapper(self._iterable)
 
         self._lock = threading.Lock()
         self._empty_event = threading.Event()
+
+    def _generator_wrapper(self, iterator):
+        # support next() for iterables, without screwing up iterators or generators
+        for i in iterator:
+            yield i
 
     def get(self):
         with self._lock:
@@ -339,5 +342,4 @@ class WorkerQueue(object):
 
     def join(self):
         self._empty_event.wait()
-
 
