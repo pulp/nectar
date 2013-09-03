@@ -204,10 +204,8 @@ class TestFetch(unittest.TestCase):
         response.raw = StringIO('abc')
         session = threaded.build_session(self.config)
         session.get = mock.MagicMock(return_value=response, spec_set=session.get)
-        report_queue = Queue()
 
-        self.downloader._fetch(req, session, report_queue)
-        report, f = report_queue.get()
+        report = self.downloader._fetch(req, session)
 
         self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
@@ -221,10 +219,8 @@ class TestFetch(unittest.TestCase):
         response.iter_content = mock.MagicMock(return_value=['abc'], spec_set=response.iter_content)
         session = threaded.build_session(self.config)
         session.get = mock.MagicMock(return_value=response, spec_set=session.get)
-        report_queue = Queue()
 
-        self.downloader._fetch(req, session, report_queue)
-        report, f = report_queue.get()
+        report = self.downloader._fetch(req, session)
 
         self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
