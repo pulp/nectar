@@ -82,7 +82,6 @@ class HTTPThreadedDownloader(Downloader):
         seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
         return datetime.timedelta(seconds=seconds)
 
-
     def worker(self, queue):
         """
         :param queue:       queue of DownloadRequest instances
@@ -147,28 +146,8 @@ class HTTPThreadedDownloader(Downloader):
         :param session: session object used by the requests library
         :type  session: requests.sessions.Session
         """
-        # this is to deal with broken web servers that violate RFC 2616 by sending
-        # a header 'content-encoding: x-gzip' when it's really just a gzipped
-        # file. In that case, we must ignore the declared encoding and thus prevent
-        # the requests library from automatically decompressing the file.
-        parse_url = urlparse.urlparse(request.url)
-
-        if parse_url.path.endswith('.gz'):
-            ignore_encoding = True
-            # declare that we don't accept any encodings, so that if we do still
-            # get a content-encoding value in the response, we know for sure the
-            # other end is broken/misbehaving.
-            headers = {'accept-encoding': ''}
-
-        else:
-            ignore_encoding = False
-            headers = None
-
-        max_speed = self.config.max_speed # None or integer in bytes/second
-
-        if max_speed is not None:
-            max_speed -= (2 * self.buffer_size) # because we test *after* reading and only sleep for 1/2 second
-            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go slower
+        ignore_encoding, headers = self._rfc2616_workaround(request)
+        max_speed = self._calculate_max_speed() # None or integer in bytes/second
 
         report = DownloadReport.from_download_request(request)
         report.download_started()
@@ -254,6 +233,39 @@ class HTTPThreadedDownloader(Downloader):
         # used for testing purposes
         return report
 
+    @staticmethod
+    def _rfc2616_workaround(request):
+        # this is to deal with broken web servers that violate RFC 2616 by sending
+        # a header 'content-encoding: x-gzip' when it's really just a gzipped
+        # file. In that case, we must ignore the declared encoding and thus prevent
+        # the requests library from automatically decompressing the file.
+        parse_url = urlparse.urlparse(request.url)
+
+        if parse_url.path.endswith('.gz'):
+            ignore_encoding = True
+            # declare that we don't accept any encodings, so that if we do still
+            # get a content-encoding value in the response, we know for sure the
+            # other end is broken/misbehaving.
+            headers = {'accept-encoding': ''}
+
+        else:
+            ignore_encoding = False
+            headers = None
+
+        return ignore_encoding, headers
+
+    def _calculate_max_speed(self):
+        # this incorporates a bit of "fudge factor" into the max_speed due the
+        # fact that the system doesn't honor very fine-grained control in while
+        # in sleep()
+        max_speed = self.config.max_speed
+
+        if max_speed is not None:
+            max_speed -= (2 * self.buffer_size) # because we test *after* reading and only sleep for 1/2 second
+            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go slower
+
+        return max_speed
+
     def _fire_event_to_listener(self, event_listener_callback, *args, **kwargs):
         # thread-safe event firing
         with self._event_lock:
@@ -307,9 +319,11 @@ def _add_proxy(session, config):
 # -- thread-safe generator queue -----------------------------------------------
 
 class WorkerQueue(object):
+    """
+    Simple, thread-safe, wrapper around an iterable.
+    """
 
     def __init__(self, iterable):
-
         self._iterable = iterable
         self._generator = _generator_wrapper(self._iterable)
 
@@ -317,6 +331,11 @@ class WorkerQueue(object):
         self._empty_event = threading.Event()
 
     def get(self):
+        """
+        Get the next item from the queue in a thread-safe manner.
+        Returns None if the queue is empty.
+        :return: next item in the queue or None
+        """
         with self._lock:
             try:
                 return next(self._generator)
@@ -325,10 +344,13 @@ class WorkerQueue(object):
             return None
 
     def join(self):
+        """
+        Blocks the caller until the queue is empty.
+        """
         self._empty_event.wait()
 
 
-def _generator_wrapper(iterator):
+def _generator_wrapper(iterable):
     # support next() for iterables, without screwing up iterators or generators
-    for i in iterator:
+    for i in iterable:
         yield i
