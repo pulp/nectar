@@ -314,6 +314,8 @@ def _add_proxy(session, config):
         auth = config.proxy_username + password_part
         url = '@'.join((auth, url))
 
+    url = '://'.join((protocol,url))
+
     session.proxies[protocol] = url
 
 # -- thread-safe generator queue -----------------------------------------------
