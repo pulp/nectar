@@ -50,7 +50,7 @@ class InstantiationTests(base.NectarTests):
         self.assertEqual(config.max_concurrent, 3)
 
     def test_invalid_max_concurrent(self):
-        self.assertRaises(AttributeError, DownloaderConfig, max_concurrent=-1)
+        self.assertRaises(ValueError, DownloaderConfig, max_concurrent=-1)
 
     def test_ssl_data_config_value(self):
         ca_cert_value = 'test cert'
