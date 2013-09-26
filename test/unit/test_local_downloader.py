@@ -81,7 +81,7 @@ class DownloadTests(base.NectarTests):
 
     def setUp(self):
         super(DownloadTests, self).setUp()
-        self.dest_dir = tempfile.mkdtemp(prefix='nectar-local-testing-')
+        self.dest_dir = tempfile.mkdtemp(prefix='nectar-local-testing-', dir='.')
 
     def tearDown(self):
         super(DownloadTests, self).tearDown()

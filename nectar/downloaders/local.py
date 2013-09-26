@@ -211,13 +211,14 @@ class LocalFileDownloader(Downloader):
             src_path = self._file_path_from_url(request.url)
             link_method(src_path, request.destination)
 
+            report.bytes_downloaded = os.path.getsize(request.destination)
+
         except Exception, e:
             _LOG.exception(e)
             report.error_msg = str(e)
             report.download_failed()
 
         else:
-            report.bytes_downloaded = os.path.getsize(request.destination)
             report.download_succeeded()
 
         return report
