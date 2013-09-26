@@ -260,5 +260,8 @@ def _add_proxy(session, config):
         auth = config.proxy_username + password_part
         url = '@'.join((auth, url))
 
-    session.proxies[protocol] = url
+    # we don't currently support https proxies for https connections because
+    # urllib3 doesn't support them, so convert to http and cross our fingers
+    session.proxies['https'] = 'http://' + url
+    session.proxies['http'] = '://'.join((protocol, url))
 
