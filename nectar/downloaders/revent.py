@@ -256,9 +256,8 @@ def _add_proxy(session, config):
     url = ':'.join((host, str(config.proxy_port)))
 
     if config.proxy_username is not None:
-        password_part = config.get('proxy_password', '') and ':%s' % config.proxy_password
-        auth = config.proxy_username + password_part
-        url = '@'.join((auth, url))
+        proxy_password = config.get('proxy_password', '')
+        session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
 
     session.proxies['https'] = '://'.join((protocol, url))
     session.proxies['http'] = '://'.join((protocol, url))
