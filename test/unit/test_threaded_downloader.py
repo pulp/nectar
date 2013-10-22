@@ -70,17 +70,16 @@ class InstantiationTests(base.NectarTests):
         session = threaded.build_session(cfg)
 
         self.assertEqual(session.stream, True)
-
-        self.assertEqual(session.auth.username, kwargs['basic_auth_username'])
-        self.assertEqual(session.auth.password, kwargs['basic_auth_password'])
-        self.assertEqual(session.auth.proxy_username, kwargs['proxy_username'])
-        self.assertEqual(session.auth.proxy_password, kwargs['proxy_password'])
-
+        self.assertEqual(session.auth, (kwargs['basic_auth_username'], kwargs['basic_auth_password']))
         self.assertEqual(session.cert, (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
-        self.assertEqual(session.proxies, {'http': 'https://%s:%d' % (proxy_host,
-                                                                      kwargs['proxy_port']),
-                                           'https': 'https://%s:%d' % (proxy_host,
-                                                                      kwargs['proxy_port'])})
+        self.assertEqual(session.proxies, {'http': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
+                                                                            kwargs['proxy_password'],
+                                                                            proxy_host,
+                                                                            kwargs['proxy_port']),
+                                           'https': 'http://%s:%s@%s:%d' % (kwargs['proxy_username'],
+                                                                            kwargs['proxy_password'],
+                                                                            proxy_host,
+                                                                            kwargs['proxy_port'])})
 
 # -- "live" tests --------------------------------------------------------------
 

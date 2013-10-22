@@ -251,43 +251,14 @@ def _add_proxy(session, config):
     if None in (config.proxy_url, config.proxy_port):
         return
 
-    # Set session.proxies according to given url and port
     protocol, remainder = urllib.splittype(config.proxy_url)
     host, remainder = urllib.splithost(remainder)
     url = ':'.join((host, str(config.proxy_port)))
 
+    if config.proxy_username is not None:
+        proxy_password = config.get('proxy_password', '')
+        session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
+
     session.proxies['https'] = '://'.join((protocol, url))
     session.proxies['http'] = '://'.join((protocol, url))
 
-    # Set session.auth if proxy username is specified
-    if config.proxy_username is not None:
-        proxy_password = config.get('proxy_password', '')
-        if None in (config.basic_auth_username, config.basic_auth_password):
-            # bz 1021662 - Proxy authentiation using username and password in session.proxies urls
-            # does not setup correct headers in the request because of a possible bug in urllib3.
-            # This is an alternate approach which does the right thing.
-            session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
-        else:
-            # The approach mentioned above overrides any basic user authentication, if specified,
-            # along with proxy authentication. We use a custom class below which inherits AuthBase
-            # class provided by requests to add the headers correctly.
-            session.auth = HTTPBasicWithProxyAuth(config.basic_auth_username,
-                                                  config.basic_auth_password,
-                                                  config.proxy_username,
-                                                  proxy_password)
-
-
-class HTTPBasicWithProxyAuth(requests.auth.AuthBase):
-    """Attaches HTTP Basic Authentication and Proxy Authentication to the given Request object."""
-
-    def __init__(self, username, password, proxy_username, proxy_password):
-        self.username = username
-        self.password = password
-        self.proxy_username = proxy_username
-        self.proxy_password = proxy_password
-
-    def __call__(self, r):
-        r.headers['Authorization'] = requests.auth._basic_auth_str(self.username, self.password)
-        r.headers['Proxy-Authorization'] = requests.auth.basic_auth_str(self.proxy_username,
-                                                                        self.proxy_password)
-        return r
