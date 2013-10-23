@@ -99,7 +99,7 @@ class InstantiationTests(base.NectarTests):
                                                          proxy_username, proxy_password)
 
         request = requests.models.Request()
-        basic_plus_proxy_config.__call__(request)
+        basic_plus_proxy_config(request)
 
         expected_authorization = requests.auth._basic_auth_str(username, password)
         expected_proxy_authorization = requests.auth._basic_auth_str(proxy_username, proxy_password)
