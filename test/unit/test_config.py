@@ -13,10 +13,10 @@
 
 import os
 
+import requests
+
 import base
-
-from nectar.config import DownloaderConfig
-
+from nectar.config import DownloaderConfig, HTTPBasicWithProxyAuth
 
 class InstantiationTests(base.NectarTests):
 
@@ -90,3 +90,18 @@ class InstantiationTests(base.NectarTests):
                           ssl_client_key=key_data,
                           ssl_client_key_path=key_file)
 
+    def test_http_basic_with_proxy_auth_config(self):
+        username = 'username'
+        password = 'password'
+        proxy_username = 'proxy_username'
+        proxy_password = 'proxy_password'
+        basic_plus_proxy_config = HTTPBasicWithProxyAuth(username, password,
+                                                         proxy_username, proxy_password)
+
+        request = requests.models.Request()
+        basic_plus_proxy_config(request)
+
+        expected_authorization = requests.auth._basic_auth_str(username, password)
+        expected_proxy_authorization = requests.auth._basic_auth_str(proxy_username, proxy_password)
+        self.assertEquals(request.headers['Authorization'], expected_authorization)
+        self.assertEquals(request.headers['Proxy-Authorization'], expected_proxy_authorization)
