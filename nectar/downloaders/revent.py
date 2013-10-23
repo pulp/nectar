@@ -24,6 +24,7 @@ from logging import getLogger
 
 import requests
 
+from nectar.config import HTTPBasicWithProxyAuth
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
@@ -264,30 +265,14 @@ def _add_proxy(session, config):
         proxy_password = config.get('proxy_password', '')
         if None in (config.basic_auth_username, config.basic_auth_password):
             # bz 1021662 - Proxy authentiation using username and password in session.proxies urls
-            # does not setup correct headers in the request because of a possible bug in urllib3.
-            # This is an alternate approach which does the right thing.
+            # does not setup correct headers in the download request because of a bug in urllib3.
+            # This is an alternate approach which sets up the headers correctly.
             session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
         else:
-            # The approach mentioned above overrides any basic user authentication, if specified,
-            # along with proxy authentication. We use a custom class below which inherits AuthBase
-            # class provided by requests to add the headers correctly.
+            # The approach mentioned above works well except when a basic user authentication is used,
+            # along with the proxy authentication. Therefore, we define and use a custom class
+            # which inherits AuthBase class provided by the requests library to add the headers correctly.
             session.auth = HTTPBasicWithProxyAuth(config.basic_auth_username,
                                                   config.basic_auth_password,
                                                   config.proxy_username,
                                                   proxy_password)
-
-
-class HTTPBasicWithProxyAuth(requests.auth.AuthBase):
-    """Attaches HTTP Basic Authentication and Proxy Authentication to the given Request object."""
-
-    def __init__(self, username, password, proxy_username, proxy_password):
-        self.username = username
-        self.password = password
-        self.proxy_username = proxy_username
-        self.proxy_password = proxy_password
-
-    def __call__(self, r):
-        r.headers['Authorization'] = requests.auth._basic_auth_str(self.username, self.password)
-        r.headers['Proxy-Authorization'] = requests.auth.basic_auth_str(self.proxy_username,
-                                                                        self.proxy_password)
-        return r
