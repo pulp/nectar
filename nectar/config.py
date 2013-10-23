@@ -199,7 +199,7 @@ class HTTPBasicWithProxyAuth(requests.auth.AuthBase):
         Callable to be used by the requests library to populate the header of a download request.
 
         :param req: download request object used by the requests library
-        :type  req: requests.model.Request
+        :type  req: requests.models.Request
         """
         req.headers['Authorization'] = requests.auth._basic_auth_str(self.username, self.password)
         req.headers['Proxy-Authorization'] = requests.auth._basic_auth_str(self.proxy_username,
