@@ -77,10 +77,14 @@ class InstantiationTests(base.NectarTests):
         self.assertEqual(session.auth.proxy_password, kwargs['proxy_password'])
 
         self.assertEqual(session.cert, (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
-        self.assertEqual(session.proxies, {'http': 'https://%s:%d' % (proxy_host,
-                                                                      kwargs['proxy_port']),
-                                           'https': 'https://%s:%d' % (proxy_host,
-                                                                      kwargs['proxy_port'])})
+        self.assertEqual(session.proxies, {'http': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
+                                                                            kwargs['proxy_password'],
+                                                                            proxy_host,
+                                                                            kwargs['proxy_port']),
+                                           'https': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
+                                                                             kwargs['proxy_password'],
+                                                                             proxy_host,
+                                                                             kwargs['proxy_port'])})
 
 # -- "live" tests --------------------------------------------------------------
 
