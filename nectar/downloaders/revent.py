@@ -257,6 +257,11 @@ def _add_proxy(session, config):
     host, remainder = urllib.splithost(remainder)
     url = ':'.join((host, str(config.proxy_port)))
 
+    if config.proxy_username is not None:
+        password_part = config.get('proxy_password', '') and ':%s' % config.proxy_password
+        auth = config.proxy_username + password_part
+        url = '@'.join((auth, url))
+
     session.proxies['https'] = '://'.join((protocol, url))
     session.proxies['http'] = '://'.join((protocol, url))
 
@@ -265,7 +270,7 @@ def _add_proxy(session, config):
         proxy_password = config.get('proxy_password', '')
         if None in (config.basic_auth_username, config.basic_auth_password):
             # bz 1021662 - Proxy authentiation using username and password in session.proxies urls
-            # does not setup correct headers in the download request because of a bug in urllib3.
+            # does not setup correct headers in the http download request because of a bug in urllib3.
             # This is an alternate approach which sets up the headers correctly.
             session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
         else:
