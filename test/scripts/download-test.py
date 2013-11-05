@@ -19,9 +19,11 @@ key_file = '1359391926_4512.key'
 
 #repo_url = 'https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/os/'
 repo_url = 'https://cdn.redhat.com/content/dist/rhel/rhui/server/6/6.2/x86_64/os/'
-remote_file = 'repodata/repomd.xml'
+#remote_file = 'repodata/repomd.xml'
+remote_file = 'repodata/b18b7720dcbd7371aa388f2d0cfe10134a85871fc9eddea267778b2d255b1f10-updateinfo.xml.gz'
 
-dest_file = 'cdn-downloaded-repomd.xml'
+#dest_file = 'cdn-downloaded-repomd.xml'
+dest_file = 'updateinfo.xml.gz'
 
 requests = [DownloadRequest(repo_url + remote_file,
                             os.path.join(current_dir, dest_file))]
