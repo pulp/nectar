@@ -11,15 +11,20 @@ Downloader objects.
 
 Construct Signature::
 
- def __init__(self **kwargs):
+ def __init__(self, **kwargs):
 
 
 The currently honored fields (read: keyword arguments) are:
 
- * ``max_concurrent``
- * ``max_speed``
  * ``basic_auth_username``
  * ``basic_auth_password``
+ * ``headers``
+ * ``max_concurrent``
+ * ``max_speed``
+ * ``proxy_url``
+ * ``proxy_port``
+ * ``proxy_username``
+ * ``proxy_password``
  * ``ssl_validation``
  * ``ssl_ca_cert``
  * ``ssl_ca_cert_path``
@@ -27,10 +32,6 @@ The currently honored fields (read: keyword arguments) are:
  * ``ssl_client_cert_path``
  * ``ssl_client_key``
  * ``ssl_client_key_path``
- * ``proxy_url``
- * ``proxy_port``
- * ``proxy_username``
- * ``proxy_password``
 
 This list will continue to grow and evolve as more downloaders are added,
 especially downloaders that support protocols other than HTTP and HTTPS.
@@ -81,3 +82,7 @@ Proxy Support
 ``proxy_username`` and ``proxy_password`` are used for authentication and must
 be provided in plain text.
 
+Headers
+-------
+``headers`` is a dictionary that can contain any additional headers that should
+be used for every request.

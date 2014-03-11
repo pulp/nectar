@@ -146,7 +146,9 @@ class HTTPThreadedDownloader(Downloader):
         :param session: session object used by the requests library
         :type  session: requests.sessions.Session
         """
-        ignore_encoding, headers = self._rfc2616_workaround(request)
+        headers = (request.headers or {}).copy()
+        ignore_encoding, additional_headers = self._rfc2616_workaround(request)
+        headers.update(additional_headers or {})
         max_speed = self._calculate_max_speed() # None or integer in bytes/second
 
         report = DownloadReport.from_download_request(request)
@@ -279,6 +281,7 @@ def build_session(config):
     _add_basic_auth(session, config)
     _add_ssl(session, config)
     _add_proxy(session, config)
+    session.headers.update(config.get('headers', {}))
 
     return session
 

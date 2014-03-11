@@ -57,6 +57,7 @@ class InstantiationTests(base.NectarTests):
     def test_build_session(self):
         kwargs = {'basic_auth_username': 'admin',
                   'basic_auth_password': 'admin',
+                  'headers': {'pulp-header': 'awesome!'},
                   'ssl_validation': False,
                   'ssl_client_cert_path': os.path.join(_find_data_directory(), 'pki/bogus/cert.pem'),
                   'ssl_client_key_path': os.path.join(_find_data_directory(), 'pki/bogus/key.pem'),
@@ -70,6 +71,9 @@ class InstantiationTests(base.NectarTests):
         session = threaded.build_session(cfg)
 
         self.assertEqual(session.stream, True)
+        # other headers get added by the requests library, so we'll just check
+        # for the one we added
+        self.assertEqual(session.headers.get('pulp-header'), 'awesome!')
 
         self.assertEqual(session.auth.username, kwargs['basic_auth_username'])
         self.assertEqual(session.auth.password, kwargs['basic_auth_password'])
@@ -205,6 +209,19 @@ class TestFetch(unittest.TestCase):
         self.listener = listener.AggregatingEventListener()
         self.downloader = threaded.HTTPThreadedDownloader(self.config, self.listener)
 
+    def test_request_headers(self):
+        URL = 'http://pulpproject.org/robots.txt'
+        req = DownloadRequest(URL, StringIO(), headers={'pulp_header': 'awesome!'})
+        response = Response()
+        response.status_code = httplib.OK
+        response.raw = StringIO('abc')
+        session = threaded.build_session(self.config)
+        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+
+        report = self.downloader._fetch(req, session)
+
+        session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'})
+
     def test_wrong_content_encoding(self):
         URL = 'http://pulpproject.org/primary.xml.gz'
         req = DownloadRequest(URL, StringIO())
@@ -235,7 +252,7 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(report.bytes_downloaded, 3)
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
-        session.get.assert_called_once_with(URL, headers=None)
+        session.get.assert_called_once_with(URL, headers={})
 
 # -- utilities -----------------------------------------------------------------
 

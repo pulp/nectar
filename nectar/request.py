@@ -17,7 +17,7 @@ class DownloadRequest(object):
     Representation of a request for a file download.
     """
 
-    def __init__(self, url, destination, data=None):
+    def __init__(self, url, destination, data=None, headers=None):
         """
         :param url:         url of the file to be downloaded
         :type  url:         str
@@ -29,11 +29,17 @@ class DownloadRequest(object):
         :type  destination: str or file-like object
         :param data:        arbitrary data to be passed back as part of the
                             reports to the listener callbacks
+        :param headers:     A dictionary specifying header names and values that will
+                            be used for this request. Headers specified here
+                            will override any headers of the same key that
+                            are specified in the config.
+        :type  headers:     dict
         """
 
         self.url = url
         self.destination = destination
         self.data = data
+        self.headers = headers
 
         self._file_handle = None
 
