@@ -22,8 +22,6 @@ The Downloaders:
    :maxdepth: 1
 
    downloaders/api
-   downloaders/curl
-   downloaders/revent
    downloaders/threaded
 
 

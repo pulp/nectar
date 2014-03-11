@@ -26,21 +26,17 @@ setup(name='nectar',
       packages=find_packages(),
       test_suite='nose.collector',
 
-      classifiers=['Development Status :: 3 - Alpha',
-                   'Intended Audience :: Developers',
+      classifiers=['Intended Audience :: Developers',
                    'Intended Audience :: Information Technology',
                    'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
                    'Operating System :: POSIX',
                    'Programming Language :: Python :: 2.6',
                    'Programming Language :: Python :: 2.7',
-                   'Topic :: Internet :: WWW/HTTP :: Client',
                    'Topic :: Software Development :: Libraries :: Python Modules',],
 
       options={'build': {'build_base': '_build'},
                'sdist': {'dist_dir': '_dist'},},
 
       install_requires=['isodate >= 0.4.9',
-                        'pycurl >= 7.19.0',
-                        'eventlet >= 0.9.17',
-                        'requests >= 1.1.0',],)
+                        'requests >= 2.0.0',],)
 

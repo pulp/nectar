@@ -13,7 +13,6 @@
 
 import datetime
 import httplib
-import Queue
 import threading
 import time
 import urllib

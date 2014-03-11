@@ -17,6 +17,8 @@ import shutil
 import tempfile
 from StringIO import StringIO
 
+import mock
+
 from nectar.config import DownloaderConfig
 from nectar.downloaders import local
 from nectar.listener import AggregatingEventListener
@@ -150,6 +152,17 @@ class GoodDownloadTests(DownloadTests):
 
         self.assertTrue(os.path.islink(request_list[0].destination))
 
+    @mock.patch('nectar.report.DownloadReport.download_canceled')
+    def test_common_link_canceled(self, mock_canceled):
+        downloader = local.LocalFileDownloader(DownloaderConfig())
+        downloader.cancel()
+        request = DownloadRequest('file://' + __file__, '/bar')
+
+        downloader._common_link(mock.MagicMock(), request)
+
+        # make sure the cancel method was called on the report
+        mock_canceled.assert_called_once_with()
+
     def test_copy(self):
         config = DownloaderConfig()
         downloader = local.LocalFileDownloader(config)
@@ -162,6 +175,20 @@ class GoodDownloadTests(DownloadTests):
 
         self.assertEqual(src_stat.st_size, dst_stat.st_size)
         self.assertNotEqual(src_stat.st_ino, dst_stat.st_ino)
+
+    @mock.patch('__builtin__.open')
+    @mock.patch('nectar.report.DownloadReport.download_canceled')
+    def test_copy_canceled(self, mock_canceled, mock_open):
+        downloader = local.LocalFileDownloader(DownloaderConfig())
+        downloader.cancel()
+        request = DownloadRequest('file://' + __file__, '/bar')
+
+        downloader._copy(request)
+
+        # make sure the cancel method was called on the report
+        mock_canceled.assert_called_once_with()
+        # make sure the no writing was attempted
+        self.assertEqual(mock_open.return_value.write.call_count, 0)
 
     def test_copy_download(self):
         config = DownloaderConfig()
