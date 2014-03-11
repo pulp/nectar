@@ -3,7 +3,7 @@
 Name:           python-nectar
 Version:        1.1.6
 Release:        1%{?dist}
-Summary:        Performance tuned network download client library
+Summary:        A download library that separates workflow from implementation details
 
 Group:          Development/Tools
 License:        GPLv2
@@ -15,17 +15,16 @@ BuildArch:      noarch
 
 BuildRequires:  python-setuptools
 
-Requires:       python-eventlet >= 0.9.17
 Requires:       python-isodate >= 0.4.9
-Requires:       python-pycurl >= 7.19.0
 Requires:       python-requests >= 2.0.0
-# RHEL6 ONLY
-%if 0%{?rhel} == 6
-Requires:       curl >= 7.19.0
-%endif
 
 %description
-%{summary}
+Nectar is a download library that abstracts the workflow of making and tracking
+download requests away from the mechanics of how those requests are carried
+out. It allows multiple downloaders to exist with different implementations,
+such as the default "threaded" downloader, which uses the "requests" library
+with multiple threads. Other experimental downloaders have used tools like
+pycurl and eventlets.
 
 %prep
 %setup -q
@@ -43,7 +42,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %{python_sitelib}/nectar/
 %{python_sitelib}/nectar*.egg-info
-%doc LICENSE.txt
+%doc LICENSE.txt README.rst
 
 %changelog
 * Mon Oct 28 2013 Sayli Karmarkar <skarmark@redhat.com> 1.1.6-1
