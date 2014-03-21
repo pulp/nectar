@@ -51,6 +51,10 @@ class DownloaderConfig(object):
      * proxy_password:       The password to use when authenticating with the proxy server
      * max_speed:            The maximum speed to be used during downloads. This should be an integer
                              value, and should be specified in units of bytes per second.
+     * headers:              A dictionary specifying header names and values that will
+                             be used for each request. Headers specified for an individual
+                             request will be merged with headers specified here with an
+                             "update" call, potentially overriding the values given here.
     """
 
     # -- instantiation ---------------------------------------------------------
