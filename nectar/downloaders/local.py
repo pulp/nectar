@@ -21,14 +21,11 @@ from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
 
-# -- constants -----------------------------------------------------------------
-
 _LOG = logging.getLogger(__name__)
 
 DEFAULT_BUFFER_SIZE = 1048576 # 1 MB in bytes
 DEFAULT_PROGRESS_INTERVAL = 5 # seconds
 
-# -- exceptions ----------------------------------------------------------------
 
 class UnlinkableDestination(Exception):
     """
@@ -36,7 +33,6 @@ class UnlinkableDestination(Exception):
     links, but the destination is a file handle instead of a path.
     """
 
-# -- local file downloader -----------------------------------------------------
 
 class LocalFileDownloader(Downloader):
     """

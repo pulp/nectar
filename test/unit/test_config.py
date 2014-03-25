@@ -18,6 +18,7 @@ import requests
 import base
 from nectar.config import DownloaderConfig, HTTPBasicWithProxyAuth
 
+
 class InstantiationTests(base.NectarTests):
 
     @classmethod
@@ -31,23 +32,50 @@ class InstantiationTests(base.NectarTests):
         except Exception, e:
             self.fail(str(e))
 
-    def test_default_configuration_value(self):
-        config = DownloaderConfig(foo=True, bar=False)
+    def test_default_configuration_values(self):
+        config = DownloaderConfig()
 
-        self.assertTrue(config.foo)
-        self.assertFalse(config.bar)
-        self.assertEqual(config.baz, None)
+        self.assertEqual(config.max_concurrent, None)
+        self.assertEqual(config.basic_auth_username, None)
+        self.assertEqual(config.basic_auth_password, None)
+        self.assertEqual(config.ssl_ca_cert, None)
+        self.assertEqual(config.ssl_ca_cert_path, None)
+        self.assertEqual(config.ssl_client_cert, None)
+        self.assertEqual(config.ssl_client_cert_path, None)
+        self.assertEqual(config.ssl_client_key, None)
+        self.assertEqual(config.ssl_client_key_path, None)
+        self.assertEqual(config.ssl_validation, True)
+        self.assertEqual(config.proxy_url, None)
+        self.assertEqual(config.proxy_port, None)
+        self.assertEqual(config.proxy_username, None)
+        self.assertEqual(config.proxy_password, None)
+        self.assertEqual(config.max_speed, None)
+        self.assertEqual(config.headers, None)
+        self.assertEqual(config.buffer_size, None)
+        self.assertEqual(config.progress_interval, None)
+        self.assertEqual(config.use_hard_links, False)
+        self.assertEqual(config.use_sym_links, False)
 
     def test_dict_semantic_default_value(self):
-        config = DownloaderConfig(key_1='value_1')
+        config = DownloaderConfig(basic_auth_username='username')
 
-        self.assertEqual(config.get('key_1'), 'value_1')
-        self.assertEqual(config.get('key_2', 'value_2'), 'value_2')
+        self.assertEqual(config.get('basic_auth_username'), 'username')
+        # Make sure passing a default password works.
+        self.assertEqual(config.get('basic_auth_password', 'default'), 'default')
 
     def test_valid_max_concurrent(self):
         config = DownloaderConfig(max_concurrent=3)
 
         self.assertEqual(config.max_concurrent, 3)
+
+    def test_invalid_key(self):
+        """
+        Try to instantiate a DownloaderConfig with a non-existing key. This test asserts correct
+        behavior for Bug #965764.
+
+        https://bugzilla.redhat.com/show_bug.cgi?id=965764
+        """
+        self.assertRaises(TypeError, DownloaderConfig, invalid_setting='invalid')
 
     def test_invalid_max_concurrent(self):
         self.assertRaises(ValueError, DownloaderConfig, max_concurrent=-1)
