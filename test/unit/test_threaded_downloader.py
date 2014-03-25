@@ -182,13 +182,13 @@ class LiveDownloadingTests(base.NectarTests):
 
     def test_throttling(self):
         two_seconds = datetime.timedelta(seconds=2)
-        three_seconds = datetime.timedelta(seconds=3)
+        three_seconds = datetime.timedelta(seconds=4)
 
         cfg = config.DownloaderConfig(max_speed=256000) # 1/2 size of file
         lst = listener.AggregatingEventListener()
         downloader = threaded.HTTPThreadedDownloader(cfg, lst)
 
-        # use the 500k file, should take >= 2 seconds to download, but < 3
+        # use the 500k file, should take >= 2 seconds to download, but < 4
         file_path = os.path.join(self.data_directory, self.data_file_names[1])
         dest_path = os.path.join(self.download_dir, self.data_file_names[1])
 
@@ -201,6 +201,7 @@ class LiveDownloadingTests(base.NectarTests):
 
         self.assertTrue(finish - start >= two_seconds)
         self.assertTrue(finish - start < three_seconds)
+
 
 
 class TestFetch(unittest.TestCase):
