@@ -145,8 +145,6 @@ class DownloaderConfig(object):
         Make sure both path and data configuration options were not specified, but make both
         available. It is known that this is not the most performant solution.
         """
-        ssl_kwargs = {}
-
         for data_arg_name, file_arg_name in (('ssl_ca_cert', 'ssl_ca_cert_path'),
                                              ('ssl_client_cert', 'ssl_client_cert_path'),
                                              ('ssl_client_key', 'ssl_client_key_path')):
