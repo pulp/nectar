@@ -114,9 +114,20 @@ class HTTPThreadedDownloader(Downloader):
             worker_thread.start()
             worker_threads.append(worker_thread)
 
-        queue.join()
-        for thread in worker_threads:
-            thread.join()
+        # We want to wait for the queue to be empty and for all worker threads to be completed.
+        # Do this with a sleep loop instead of thread joins & thread Events so that signals are
+        # able to be intercepted by projects using this library.
+        while True:
+            still_processing = False
+            if not queue.finished:
+                still_processing = True
+            for thread in worker_threads:
+                if thread.is_alive():
+                    still_processing = True
+            if still_processing:
+                time.sleep(1)
+            else:
+                break
 
     @staticmethod
     def chunk_generator(raw, chunk_size):
@@ -340,6 +351,7 @@ def _add_proxy(session, config):
 
 # -- thread-safe generator queue -----------------------------------------------
 
+
 class WorkerQueue(object):
     """
     Simple, thread-safe, wrapper around an iterable.
@@ -350,7 +362,7 @@ class WorkerQueue(object):
         self._generator = _generator_wrapper(self._iterable)
 
         self._lock = threading.Lock()
-        self._empty_event = threading.Event()
+        self.finished = False
 
     def get(self):
         """
@@ -362,14 +374,9 @@ class WorkerQueue(object):
             try:
                 return next(self._generator)
             except StopIteration:
-                self._empty_event.set()
+                self.finished = True
+            self.finished = True
             return None
-
-    def join(self):
-        """
-        Blocks the caller until the queue is empty.
-        """
-        self._empty_event.wait()
 
 
 def _generator_wrapper(iterable):
