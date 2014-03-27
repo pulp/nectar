@@ -114,7 +114,7 @@ class HTTPThreadedDownloader(Downloader):
             worker_thread.start()
             worker_threads.append(worker_thread)
 
-        # We want to wait for the queue to be empty and for all worker threads to be completed
+        # We want to wait for the queue to be empty and for all worker threads to be completed.
         # Do this with a sleep loop instead of thread joins & thread Events so that signals are
         # able to be intercepted by projects using this library.
         while True:

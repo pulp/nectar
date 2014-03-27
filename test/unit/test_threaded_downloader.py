@@ -21,7 +21,6 @@ import string
 import tempfile
 import unittest
 import urllib
-from Queue import Queue
 
 import mock
 from requests import Response
@@ -29,15 +28,15 @@ from requests import Response
 import base
 import http_static_test_server
 
-from nectar import config, listener, report, request
+from nectar import config, listener, request
 from nectar.downloaders import threaded
 from nectar.report import DOWNLOAD_SUCCEEDED
 from nectar.request import DownloadRequest
 
 # -- instantiation tests -------------------------------------------------------
 
-class InstantiationTests(base.NectarTests):
 
+class InstantiationTests(base.NectarTests):
     def test_instantiation(self):
         cfg = config.DownloaderConfig()
         lst = listener.DownloadEventListener()
@@ -52,14 +51,16 @@ class InstantiationTests(base.NectarTests):
 
         self.assertEqual(downloader.buffer_size, threaded.DEFAULT_BUFFER_SIZE)
         self.assertEqual(downloader.max_concurrent, threaded.DEFAULT_MAX_CONCURRENT)
-        self.assertEqual(downloader.progress_interval, datetime.timedelta(seconds=threaded.DEFAULT_PROGRESS_INTERVAL))
+        self.assertEqual(downloader.progress_interval,
+                         datetime.timedelta(seconds=threaded.DEFAULT_PROGRESS_INTERVAL))
 
     def test_build_session(self):
         kwargs = {'basic_auth_username': 'admin',
                   'basic_auth_password': 'admin',
                   'headers': {'pulp-header': 'awesome!'},
                   'ssl_validation': False,
-                  'ssl_client_cert_path': os.path.join(_find_data_directory(), 'pki/bogus/cert.pem'),
+                  'ssl_client_cert_path': os.path.join(_find_data_directory(),
+                                                       'pki/bogus/cert.pem'),
                   'ssl_client_key_path': os.path.join(_find_data_directory(), 'pki/bogus/key.pem'),
                   'proxy_url': 'https://invalid-proxy.com',
                   'proxy_port': 1234,
@@ -80,20 +81,22 @@ class InstantiationTests(base.NectarTests):
         self.assertEqual(session.auth.proxy_username, kwargs['proxy_username'])
         self.assertEqual(session.auth.proxy_password, kwargs['proxy_password'])
 
-        self.assertEqual(session.cert, (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
-        self.assertEqual(session.proxies, {'http': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
-                                                                            kwargs['proxy_password'],
-                                                                            proxy_host,
-                                                                            kwargs['proxy_port']),
-                                           'https': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
-                                                                             kwargs['proxy_password'],
-                                                                             proxy_host,
-                                                                             kwargs['proxy_port'])})
+        self.assertEqual(session.cert,
+                         (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
+        self.assertEqual(session.proxies,
+                         {'http': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
+                                                           kwargs['proxy_password'],
+                                                           proxy_host,
+                                                           kwargs['proxy_port']),
+                          'https': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
+                                                            kwargs['proxy_password'],
+                                                            proxy_host,
+                                                            kwargs['proxy_port'])})
+
 
 # -- "live" tests --------------------------------------------------------------
 
 class LiveDownloadingTests(base.NectarTests):
-
     data_directory = None
     data_file_names = ['100K_file', '500K_file', '1M_file']
     data_file_sizes = [102400, 512000, 1048576]
@@ -164,7 +167,8 @@ class LiveDownloadingTests(base.NectarTests):
 
         bogus_file_names = ['notme', 'notmeeither']
         all_file_names = self.data_file_names + bogus_file_names
-        url_list = ['http://localhost:%d/%s%s' % (self.server_port, self.data_directory, n) for n in all_file_names]
+        url_list = ['http://localhost:%d/%s%s' % (self.server_port, self.data_directory, n) for n in
+                    all_file_names]
         dest_list = [os.path.join(self.download_dir, n) for n in all_file_names]
         request_list = [request.DownloadRequest(u, d) for u, d in zip(url_list, dest_list)]
 
@@ -184,7 +188,7 @@ class LiveDownloadingTests(base.NectarTests):
         two_seconds = datetime.timedelta(seconds=2)
         three_seconds = datetime.timedelta(seconds=4)
 
-        cfg = config.DownloaderConfig(max_speed=256000) # 1/2 size of file
+        cfg = config.DownloaderConfig(max_speed=256000)  # 1/2 size of file
         lst = listener.AggregatingEventListener()
         downloader = threaded.HTTPThreadedDownloader(cfg, lst)
 
@@ -203,7 +207,6 @@ class LiveDownloadingTests(base.NectarTests):
         self.assertTrue(finish - start < three_seconds)
 
 
-
 class TestFetch(unittest.TestCase):
     def setUp(self):
         self.config = config.DownloaderConfig()
@@ -219,7 +222,7 @@ class TestFetch(unittest.TestCase):
         session = threaded.build_session(self.config)
         session.get = mock.MagicMock(return_value=response, spec_set=session.get)
 
-        report = self.downloader._fetch(req, session)
+        self.downloader._fetch(req, session)
 
         session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'})
 
@@ -236,7 +239,7 @@ class TestFetch(unittest.TestCase):
 
         self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
-        session.get.assert_called_once_with(URL, headers={'accept-encoding':''})
+        session.get.assert_called_once_with(URL, headers={'accept-encoding': ''})
 
     def test_normal_content_encoding(self):
         URL = 'http://pulpproject.org/primary.xml'
@@ -255,7 +258,9 @@ class TestFetch(unittest.TestCase):
         # headers it thinks are appropriate.
         session.get.assert_called_once_with(URL, headers={})
 
+
 # -- utilities -----------------------------------------------------------------
+
 
 def _find_data_directory():
     potential_directory = 'test/unit/data/'
@@ -269,4 +274,3 @@ def _find_data_directory():
 def _generate_urls(num_urls, host_url='http://10.20.30.40/', path_prefix=''):
     file_names = [''.join(random.sample(string.letters, 7)) for i in range(num_urls)]
     return [urllib.basejoin(host_url, path_prefix + f) for f in file_names]
-
