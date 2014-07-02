@@ -23,14 +23,15 @@ import unittest
 import urllib
 
 import mock
-from requests import Response
+from requests import Response, Session
 
 import base
 import http_static_test_server
 
 from nectar import config, listener, request
+from nectar.config import DownloaderConfig
 from nectar.downloaders import threaded
-from nectar.report import DOWNLOAD_SUCCEEDED
+from nectar.report import DownloadReport
 from nectar.request import DownloadRequest
 
 # -- instantiation tests -------------------------------------------------------
@@ -237,7 +238,7 @@ class TestFetch(unittest.TestCase):
 
         report = self.downloader._fetch(req, session)
 
-        self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
+        self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
         session.get.assert_called_once_with(URL, headers={'accept-encoding': ''})
 
@@ -252,11 +253,28 @@ class TestFetch(unittest.TestCase):
 
         report = self.downloader._fetch(req, session)
 
-        self.assertEqual(report.state, DOWNLOAD_SUCCEEDED)
+        self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
         session.get.assert_called_once_with(URL, headers={})
+
+
+class TestDownloadOne(unittest.TestCase):
+    @mock.patch.object(threaded.HTTPThreadedDownloader, '_fetch', spec_set=True)
+    def test_calls_fetch(self, mock_fetch):
+        config = DownloaderConfig()
+        request = DownloadRequest('http://foo', StringIO())
+        report = DownloadReport.from_download_request(request)
+        downloader = threaded.HTTPThreadedDownloader(config)
+        mock_fetch.return_value = report
+
+        ret = downloader._download_one(request)
+
+        self.assertEqual(mock_fetch.call_count, 1)
+        self.assertTrue(ret is report)
+        self.assertTrue(mock_fetch.call_args[0][0] is request)
+        self.assertTrue(isinstance(mock_fetch.call_args[0][1], Session))
 
 
 # -- utilities -----------------------------------------------------------------

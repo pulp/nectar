@@ -16,12 +16,14 @@ import os
 import shutil
 import tempfile
 from StringIO import StringIO
+import unittest
 
 import mock
 
 from nectar.config import DownloaderConfig
 from nectar.downloaders import local
 from nectar.listener import AggregatingEventListener
+from nectar.report import DownloadReport
 from nectar.request import DownloadRequest
 
 import base
@@ -297,3 +299,20 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
+
+class TestDownloadOne(unittest.TestCase):
+    def test_calls_download_method(self):
+        config = DownloaderConfig()
+        listener = AggregatingEventListener()
+        downloader = local.LocalFileDownloader(config, listener)
+        request = DownloadRequest('http://foo', StringIO())
+        report = DownloadReport.from_download_request(request)
+
+        # mock _copy, which is the default function to which requests are passed
+        with mock.patch.object(downloader, '_copy') as mock_method:
+            mock_method.return_value = report
+
+            ret = downloader._download_one(request)
+
+            self.assertEqual(ret, report)
+            mock_method.assert_called_once_with(request)

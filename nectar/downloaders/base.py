@@ -42,6 +42,9 @@ class Downloader(object):
         self.config = config
         self.event_listener = event_listener or DownloadEventListener()
         self.is_canceled = False
+        # If False, no events will be fired to a listener. This is useful for
+        # doing a synchronous download.
+        self.fire_events = True
 
     # download api -------------------------------------------------------------
 
@@ -54,6 +57,37 @@ class Downloader(object):
         :type request_list: iterator of nectar.request.DownloadRequest
         :return: list of download reports corresponding the the download requests
         :rtype: list of nectar.report.DownloadReport
+        """
+        raise NotImplementedError()
+
+    def download_one(self, request):
+        """
+        Downloads one url, blocks, and returns a DownloadReport.
+
+        :param request: download request object with details about what to
+                        download and where to put it
+        :type  request: nectar.request.DownloadRequest
+
+        :return:    download report
+        :rtype:     nectar.report.DownloadReport
+        """
+        # don't fire events to a listener for this synchronous call
+        self.fire_events = False
+        try:
+            return self._download_one(request)
+        finally:
+            self.fire_events = True
+
+    def _download_one(self, request):
+        """
+        Downloads one url, blocks, and returns a DownloadReport.
+
+        :param request: download request object with details about what to
+                        download and where to put it
+        :type  request: nectar.request.DownloadRequest
+
+        :return:    download report
+        :rtype:     nectar.report.DownloadReport
         """
         raise NotImplementedError()
 
@@ -107,6 +141,7 @@ class Downloader(object):
 
     def _fire_event_to_listener(self, event_listener_callback, *args, **kwargs):
         try:
-            event_listener_callback(*args, **kwargs)
+            if self.fire_events:
+                event_listener_callback(*args, **kwargs)
         except Exception, e:
             _LOG.exception(e)

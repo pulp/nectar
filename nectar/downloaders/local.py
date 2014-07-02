@@ -79,6 +79,19 @@ class LocalFileDownloader(Downloader):
             else: # DOWNLOAD_FAILED
                 self.fire_download_failed(report)
 
+    def _download_one(self, request):
+        """
+        Downloads one url, blocks, and returns a DownloadReport.
+
+        :param request: download request object with details about what to
+                        download and where to put it
+        :type  request: nectar.request.DownloadRequest
+
+        :return:    download report
+        :rtype:     nectar.report.DownloadReport
+        """
+        return self.download_method(request)
+
     # -- types of downloads ----------------------------------------------------
 
     def _hard_link(self, request, report=None):
