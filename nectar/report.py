@@ -45,6 +45,8 @@ class DownloadReport(object):
                             be displayed to an end user.
     :ivar error_report:     arbitrary dictionary containing debugging info in the event of a
                             failure
+    :ivar headers:          dictionary containing response headers if they are
+                            available, such as from an http-related downloader.
     """
 
     @classmethod
@@ -82,6 +84,8 @@ class DownloadReport(object):
 
         self.error_msg = None
         self.error_report = {}
+
+        self.headers = None
 
     # state management methods -------------------------------------------------
 

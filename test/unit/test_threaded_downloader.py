@@ -226,6 +226,24 @@ class TestFetch(unittest.TestCase):
 
         session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'})
 
+    def test_response_headers(self):
+        """
+        Make sure that whatever headers come back on the response get added
+        to the report.
+        """
+        URL = 'http://pulpproject.org/robots.txt'
+        req = DownloadRequest(URL, StringIO(), headers={'pulp_header': 'awesome!'})
+        response = Response()
+        response.status_code = httplib.OK
+        response.headers = {'content-length': '1024'}
+        response.raw = StringIO('abc')
+        session = threaded.build_session(self.config)
+        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+
+        report = self.downloader._fetch(req, session)
+
+        self.assertEqual(report.headers['content-length'], '1024')
+
     def test_wrong_content_encoding(self):
         URL = 'http://pulpproject.org/primary.xml.gz'
         req = DownloadRequest(URL, StringIO())

@@ -171,6 +171,7 @@ class HTTPThreadedDownloader(Downloader):
                 raise DownloadCancelled(request.url)
 
             response = session.get(request.url, headers=headers)
+            report.headers = response.headers
 
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
