@@ -42,7 +42,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %{python_sitelib}/nectar/
 %{python_sitelib}/nectar*.egg-info
-%doc LICENSE.txt README.rst
+%doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
 * Fri Mar 28 2014 Jeff Ortel <jortel@redhat.com> 1.2.1-1

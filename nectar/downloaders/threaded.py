@@ -149,6 +149,20 @@ class HTTPThreadedDownloader(Downloader):
                 break
             yield chunk
 
+    def _download_one(self, request):
+        """
+        Downloads one url, blocks, and returns a DownloadReport.
+
+        :param request: download request object with details about what to
+                        download and where to put it
+        :type  request: nectar.request.DownloadRequest
+
+        :return:    download report
+        :rtype:     nectar.report.DownloadReport
+        """
+        session = build_session(self.config)
+        return self._fetch(request, session)
+
     def _fetch(self, request, session):
         """
         :param request: download request object with details about what to
@@ -156,6 +170,9 @@ class HTTPThreadedDownloader(Downloader):
         :type  request: nectar.request.DownloadRequest
         :param session: session object used by the requests library
         :type  session: requests.sessions.Session
+
+        :return:    download report
+        :rtype:     nectar.report.DownloadReport
         """
         headers = (request.headers or {}).copy()
         ignore_encoding, additional_headers = self._rfc2616_workaround(request)
@@ -244,7 +261,6 @@ class HTTPThreadedDownloader(Downloader):
         else: # DOWNLOAD_FAILED
             self.fire_download_failed(report)
 
-        # used for testing purposes
         return report
 
     @staticmethod

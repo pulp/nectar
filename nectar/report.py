@@ -16,15 +16,6 @@ from gettext import gettext as _
 
 from isodate import UTC
 
-# download states --------------------------------------------------------------
-
-DOWNLOAD_WAITING = 'waiting'
-DOWNLOAD_DOWNLOADING = 'downloading'
-DOWNLOAD_SUCCEEDED = 'succeeded'
-DOWNLOAD_FAILED = 'failed'
-DOWNLOAD_CANCELED = 'canceled'
-
-# download report --------------------------------------------------------------
 
 class DownloadReport(object):
     """
@@ -48,6 +39,11 @@ class DownloadReport(object):
     :ivar headers:          dictionary containing response headers if they are
                             available, such as from an http-related downloader.
     """
+    DOWNLOAD_WAITING = 'waiting'
+    DOWNLOAD_DOWNLOADING = 'downloading'
+    DOWNLOAD_SUCCEEDED = 'succeeded'
+    DOWNLOAD_FAILED = 'failed'
+    DOWNLOAD_CANCELED = 'canceled'
 
     @classmethod
     def from_download_request(cls, request):
@@ -74,7 +70,7 @@ class DownloadReport(object):
         self.destination = destination
         self.data = data
 
-        self.state = DOWNLOAD_WAITING
+        self.state = self.DOWNLOAD_WAITING
 
         self.total_bytes = None
         self.bytes_downloaded = 0
@@ -97,9 +93,9 @@ class DownloadReport(object):
         report's state the first time it is called. Subsequent calls amount to
         no-ops.
         """
-        if self.state is not DOWNLOAD_WAITING:
+        if self.state != self.DOWNLOAD_WAITING:
             return
-        self.state = DOWNLOAD_DOWNLOADING
+        self.state = self.DOWNLOAD_DOWNLOADING
         self.start_time = datetime.now(tz=UTC)
 
     def download_succeeded(self):
@@ -110,7 +106,7 @@ class DownloadReport(object):
         report's state the first time it is called. Subsequent calls to this
         method or download_failed or download_canceled amount to no-ops.
         """
-        self._download_finished(DOWNLOAD_SUCCEEDED)
+        self._download_finished(self.DOWNLOAD_SUCCEEDED)
 
     def download_failed(self):
         """
@@ -123,7 +119,7 @@ class DownloadReport(object):
         # default message in case a downloader doesn't set an error message
         if self.error_msg is None:
             self.error_msg = _('Download Failed')
-        self._download_finished(DOWNLOAD_FAILED)
+        self._download_finished(self.DOWNLOAD_FAILED)
 
     def download_canceled(self):
         """
@@ -133,11 +129,19 @@ class DownloadReport(object):
         report's state the first time it is called. Subsequent calls to this
         method or download_succeeded or download_failed amount to no-ops.
         """
-        self._download_finished(DOWNLOAD_CANCELED)
+        self._download_finished(self.DOWNLOAD_CANCELED)
 
     def _download_finished(self, state):
-        if self.state is not DOWNLOAD_DOWNLOADING:
+        if self.state != self.DOWNLOAD_DOWNLOADING:
             return
         self.state = state
         self.finish_time = datetime.now(tz=UTC)
 
+
+# here for backward-compatibility. It is preferable to access these directly on
+# the DownloadReport object.
+DOWNLOAD_WAITING = DownloadReport.DOWNLOAD_WAITING
+DOWNLOAD_DOWNLOADING = DownloadReport.DOWNLOAD_DOWNLOADING
+DOWNLOAD_SUCCEEDED = DownloadReport.DOWNLOAD_SUCCEEDED
+DOWNLOAD_FAILED = DownloadReport.DOWNLOAD_FAILED
+DOWNLOAD_CANCELED = DownloadReport.DOWNLOAD_CANCELED
