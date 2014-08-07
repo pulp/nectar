@@ -1,7 +1,7 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from %distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
 Name:           python-nectar
-Version:        1.2.1
+Version:        1.2.2
 Release:        1%{?dist}
 Summary:        A download library that separates workflow from implementation details
 
@@ -45,6 +45,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
+* Thu Aug 07 2014 Jeff Ortel <jortel@redhat.com> 1.2.2-1
+- 1126083 - no longer logging a failed download at ERROR level
+  (mhrivnak@redhat.com)
 * Fri Mar 28 2014 Jeff Ortel <jortel@redhat.com> 1.2.1-1
 - 1078945 - Canceling a repo sync task does not seem to halt the
   rpm sync (bcourt@redhat.com)
