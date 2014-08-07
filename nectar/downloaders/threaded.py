@@ -240,7 +240,7 @@ class HTTPThreadedDownloader(Downloader):
             report.download_canceled()
 
         except DownloadFailed, e:
-            _LOG.error(str(e))
+            _LOG.debug('download failed: %s' % str(e))
             report.error_msg = e.args[2]
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
