@@ -94,7 +94,7 @@ class HTTPThreadedDownloader(Downloader):
             while True:
                 request = queue.get()
 
-                if request is None:
+                if request is None or self.is_canceled:
                     session.close()
                     break
 
@@ -119,7 +119,7 @@ class HTTPThreadedDownloader(Downloader):
         # able to be intercepted by projects using this library.
         while True:
             still_processing = False
-            if not queue.finished:
+            if not queue.finished and not self.is_canceled:
                 still_processing = True
             for thread in worker_threads:
                 if thread.is_alive():
