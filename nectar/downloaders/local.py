@@ -172,6 +172,10 @@ class LocalFileDownloader(Downloader):
                 self.fire_download_progress(report)
                 last_progress_update = now
 
+        except IOError, e:
+            logger.debug(e)
+            report.error_msg = str(e)
+            report.download_failed()
         except Exception, e:
             logger.exception(e)
             report.error_msg = str(e)
