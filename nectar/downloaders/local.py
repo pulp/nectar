@@ -225,6 +225,10 @@ class LocalFileDownloader(Downloader):
 
             report.bytes_downloaded = os.path.getsize(request.destination)
 
+        except OSError, e:
+            logger.debug(e)
+            report.error_msg = str(e)
+            report.download_failed()
         except Exception, e:
             logger.exception(e)
             report.error_msg = str(e)

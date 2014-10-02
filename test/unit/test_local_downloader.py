@@ -249,19 +249,46 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
-    def test_source_not_found(self):
-        config = DownloaderConfig(use_sym_links=True)
+    @mock.patch('nectar.downloaders.local.logger')
+    def test__copy_when_source_not_found(self, mock_logger):
+        """
+        Test that nectar properly handles an attempt to copy local files
+        that do not exist.
+        """
+        config = DownloaderConfig(use_sym_links=False)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
         request = DownloadRequest('file://i/dont/exist', os.path.join(self.dest_dir, 'doesnt.even.matter'))
-
         downloader.download([request])
 
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
+        debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
+        self.assertTrue('No such file or directory' in debug_messages)
+
+    @mock.patch('nectar.downloaders.local.logger')
+    def test__common_link_when_source_not_found(self, mock_logger):
+        """
+        Test that nectar properly handles an attempt to link local files
+        that do not exist.
+        """
+        config = DownloaderConfig(use_sym_links=True)
+        listener = AggregatingEventListener()
+        downloader = local.LocalFileDownloader(config, listener)
+
+        request = DownloadRequest('file://i/dont/exist', os.path.join(self.dest_dir, 'doesnt.even.matter'))
+        downloader.download([request])
+
+        self.assertEqual(len(listener.succeeded_reports), 0)
+        self.assertEqual(len(listener.failed_reports), 1)
+
+        debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
+        self.assertTrue('No such file or directory' in debug_messages)
+
     def test_destination_not_found(self):
+
         config = DownloaderConfig(use_sym_links=True)
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
