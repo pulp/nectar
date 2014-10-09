@@ -267,6 +267,7 @@ class BadDownloadTests(DownloadTests):
 
         debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
         self.assertTrue('No such file or directory' in debug_messages)
+        self.assertEqual(mock_logger.exception.call_count, 0)
 
     @mock.patch('nectar.downloaders.local.logger')
     def test__common_link_when_source_not_found(self, mock_logger):
@@ -286,6 +287,7 @@ class BadDownloadTests(DownloadTests):
 
         debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
         self.assertTrue('No such file or directory' in debug_messages)
+        self.assertEqual(mock_logger.exception.call_count, 0)
 
     def test_destination_not_found(self):
 
