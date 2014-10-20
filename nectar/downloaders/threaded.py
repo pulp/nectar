@@ -27,7 +27,7 @@ from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
 # -- constants -----------------------------------------------------------------
 
-_LOG = getLogger(__name__)
+_logger = getLogger(__name__)
 
 DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192 # bytes
@@ -38,11 +38,13 @@ ONE_SECOND = datetime.timedelta(seconds=1)
 
 # -- exception classes ---------------------------------------------------------
 
+
 class DownloadCancelled(Exception):
     def __init__(self, url):
         super(DownloadCancelled, self).__init__(url)
     def __str__(self):
         return 'Download of %s was cancelled' % self.args[0]
+
 
 class DownloadFailed(Exception):
     def __init__(self, url, code, msg=None):
@@ -50,7 +52,12 @@ class DownloadFailed(Exception):
     def __str__(self):
         return 'Download of %s failed with code %d: %s' % tuple(a for a in self.args)
 
+
+class SkipLocation(Exception):
+    pass
+
 # -- downloader class ----------------------------------------------------------
+
 
 class HTTPThreadedDownloader(Downloader):
     """
@@ -69,6 +76,9 @@ class HTTPThreadedDownloader(Downloader):
         # thread-safety when firing events
         self._event_lock = threading.Lock()
 
+        # set of locations that produced a connection error
+        self.failed_netlocs = set([])
+        
     @property
     def buffer_size(self):
         return self.config.buffer_size or DEFAULT_BUFFER_SIZE
@@ -101,13 +111,13 @@ class HTTPThreadedDownloader(Downloader):
                 self._fetch(request, session)
 
         except:
-            _LOG.exception('Unhandled Exception in Worker Thread [%s]' % threading.currentThread().ident)
+            _logger.exception('Unhandled Exception in Worker Thread [%s]' % threading.currentThread().ident)
 
     def download(self, request_list):
         worker_threads = []
         queue = WorkerQueue(request_list)
 
-        _LOG.debug('starting workers')
+        _logger.debug('starting workers')
         for i in range(self.max_concurrent):
             worker_thread = threading.Thread(target=self.worker, args=[queue])
             worker_thread.setDaemon(True)
@@ -178,16 +188,22 @@ class HTTPThreadedDownloader(Downloader):
         ignore_encoding, additional_headers = self._rfc2616_workaround(request)
         headers.update(additional_headers or {})
         max_speed = self._calculate_max_speed() # None or integer in bytes/second
-
         report = DownloadReport.from_download_request(request)
         report.download_started()
         self.fire_download_started(report)
+        netloc = urlparse.urlparse(request.url).netloc
 
         try:
             if self.is_canceled:
                 raise DownloadCancelled(request.url)
 
-            response = session.get(request.url, headers=headers)
+            if netloc in self.failed_netlocs:
+                raise SkipLocation()
+
+            response = session.get(
+                request.url, headers=headers, timeout=(self.config.connect_timeout, self.config.read_timeout)
+            )
+
             report.headers = response.headers
 
             if response.status_code != httplib.OK:
@@ -235,19 +251,42 @@ class HTTPThreadedDownloader(Downloader):
             # guarantee 1 report at the end
             self.fire_download_progress(report)
 
+        except SkipLocation:
+            _logger.debug("Skipping {url} because {netloc} could not be reached.".format(
+                url=request.url, netloc=netloc)
+            )
+            report.download_skipped()
+
+        except requests.ConnectionError:
+            _logger.warning("Connection Error - {url} could not be reached.".format(
+                url=request.url)
+            )
+            self.failed_netlocs.add(netloc)
+            report.download_connection_error()
+
+        except requests.Timeout:
+            """
+            Handle a timeout differently than a connection error. Do not add
+            to failed_netlocs so that a new connection can be attempted.
+            """
+            _logger.warning("Request Timeout - Connection with {url} timed out.".format(
+                url=request.url)
+            )
+            report.download_connection_error()
+
         except DownloadCancelled, e:
-            _LOG.debug(str(e))
+            _logger.debug(str(e))
             report.download_canceled()
 
         except DownloadFailed, e:
-            _LOG.debug('download failed: %s' % str(e))
+            _logger.debug('download failed: %s' % str(e))
             report.error_msg = e.args[2]
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
             report.download_failed()
 
         except Exception, e:
-            _LOG.exception(e)
+            _logger.exception(e)
             report.error_msg = str(e)
             report.download_failed()
 
