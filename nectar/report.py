@@ -121,6 +121,22 @@ class DownloadReport(object):
             self.error_msg = _('Download Failed')
         self._download_finished(self.DOWNLOAD_FAILED)
 
+    def download_skipped(self):
+        """
+        Mark that this download has been skipped.
+        """
+        self.error_msg = _('Download skipped')
+        self.state = self.DOWNLOAD_FAILED
+
+    def download_connection_error(self):
+        """
+        Indicate that a connection error occurred
+        """
+
+        self.error_msg = _('A connection error occurred')
+        self.state = self.DOWNLOAD_FAILED
+        self.finish_time = datetime.now(tz=UTC)
+
     def download_canceled(self):
         """
         Mark the report as having been canceled.

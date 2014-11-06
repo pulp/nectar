@@ -23,7 +23,7 @@ import unittest
 import urllib
 
 import mock
-from requests import Response, Session
+from requests import Response, Session, ConnectionError, Timeout
 
 import base
 import http_static_test_server
@@ -225,7 +225,8 @@ class TestFetch(unittest.TestCase):
 
         self.downloader._fetch(req, session)
 
-        session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'})
+        session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'},
+                                            timeout=(self.config.connect_timeout, self.config.read_timeout))
 
     def test_response_headers(self):
         """
@@ -258,7 +259,8 @@ class TestFetch(unittest.TestCase):
 
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
-        session.get.assert_called_once_with(URL, headers={'accept-encoding': ''})
+        session.get.assert_called_once_with(URL, headers={'accept-encoding': ''},
+                                            timeout=(self.config.connect_timeout, self.config.read_timeout))
 
     def test_normal_content_encoding(self):
         URL = 'http://pulpproject.org/primary.xml'
@@ -275,8 +277,72 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(report.bytes_downloaded, 3)
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
-        session.get.assert_called_once_with(URL, headers={})
+        session.get.assert_called_once_with(URL, headers={}, timeout=(self.config.connect_timeout,
+                                                    self.config.read_timeout))
 
+    def test_fetch_with_connection_error(self):
+        """
+        Test that the report state is failed and that the baseurl is not tried again.
+        """
+
+        # requests.ConnectionError
+        def connection_error(*args, **kwargs):
+            raise ConnectionError()
+
+        with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
+            URL = 'http://pulpproject.org/primary.xml'
+            req = DownloadRequest(URL, StringIO())
+            session = threaded.build_session(self.config)
+            session.get = connection_error
+            report = self.downloader._fetch(req, session)
+
+            self.assertEqual(report.state, report.DOWNLOAD_FAILED)
+            self.assertIn('pulpproject.org', self.downloader.failed_netlocs)
+
+            session2 = threaded.build_session(self.config)
+            session2.get = mock.MagicMock()
+            report2 = self.downloader._fetch(req, session2)
+
+            self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
+            self.assertEqual(session2.get.call_count, 0)
+
+            expected_log_message = "Connection Error - http://pulpproject.org/primary.xml " \
+                                   "could not be reached."
+            log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
+
+            self.assertIn(expected_log_message, log_calls)
+
+    def test_fetch_with_timeout(self):
+        """
+        Test that the report state is failed and that the baseurl can be tried again.
+        """
+
+        # requests.ConnectionError
+        def timeout(*args, **kwargs):
+            raise Timeout()
+
+        with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
+            URL = 'http://pulpproject.org/primary.xml'
+            req = DownloadRequest(URL, StringIO())
+            session = threaded.build_session(self.config)
+            session.get = timeout
+            report = self.downloader._fetch(req, session)
+
+            self.assertEqual(report.state, report.DOWNLOAD_FAILED)
+            self.assertNotIn('pulpproject.org', self.downloader.failed_netlocs)
+
+            session2 = threaded.build_session(self.config)
+            session2.get = mock.MagicMock()
+            report2 = self.downloader._fetch(req, session2)
+
+            self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
+            self.assertEqual(session2.get.call_count, 1)
+
+            expected_log_message = "Request Timeout - Connection with " \
+                                   "http://pulpproject.org/primary.xml timed out."
+            log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
+
+            self.assertIn(expected_log_message, log_calls)
 
 class TestDownloadOne(unittest.TestCase):
     @mock.patch.object(threaded.HTTPThreadedDownloader, '_fetch', spec_set=True)

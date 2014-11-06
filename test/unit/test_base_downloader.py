@@ -39,3 +39,15 @@ class LyingDownloader(Downloader):
         report = DownloadReport.from_download_request(request)
         self.fire_download_succeeded(report)
         return report
+
+
+class TestDownloadReport(unittest.TestCase):
+
+    def setUp(self):
+        self.report = DownloadReport("fakeurl", "fakedestination")
+
+    def test_download_connection_error(self):
+
+        self.report.download_connection_error()
+        self.assertEqual(self.report.state, self.report.DOWNLOAD_FAILED)
+        self.assertEqual(self.report.error_msg, "A connection error occurred")

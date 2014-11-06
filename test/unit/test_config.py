@@ -55,6 +55,8 @@ class InstantiationTests(base.NectarTests):
         self.assertEqual(config.progress_interval, None)
         self.assertEqual(config.use_hard_links, False)
         self.assertEqual(config.use_sym_links, False)
+        self.assertEqual(config.connect_timeout, 6.05)
+        self.assertEqual(config.read_timeout, 27)
 
     def test_dict_semantic_default_value(self):
         config = DownloaderConfig(basic_auth_username='username')
