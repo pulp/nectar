@@ -1,22 +1,10 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the License
-# (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied, including the
-# implied warranties of MERCHANTABILITY, NON-INFRINGEMENT, or FITNESS FOR A
-# PARTICULAR PURPOSE.
-# You should have received a copy of GPLv2 along with this software;
-# if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
-
 import datetime
 import httplib
 import threading
 import time
 import urllib
 import urlparse
+from gettext import gettext as _
 from logging import getLogger
 
 import requests
@@ -30,9 +18,9 @@ from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 _logger = getLogger(__name__)
 
 DEFAULT_MAX_CONCURRENT = 5
-DEFAULT_BUFFER_SIZE = 8192 # bytes
-DEFAULT_PROGRESS_INTERVAL = 5 # seconds
-DEFAULT_RETRIES = 3
+DEFAULT_BUFFER_SIZE = 8192  # bytes
+DEFAULT_PROGRESS_INTERVAL = 5  # seconds
+DEFAULT_TRIES = 2
 
 ONE_SECOND = datetime.timedelta(seconds=1)
 
@@ -42,6 +30,7 @@ ONE_SECOND = datetime.timedelta(seconds=1)
 class DownloadCancelled(Exception):
     def __init__(self, url):
         super(DownloadCancelled, self).__init__(url)
+
     def __str__(self):
         return 'Download of %s was cancelled' % self.args[0]
 
@@ -49,12 +38,22 @@ class DownloadCancelled(Exception):
 class DownloadFailed(Exception):
     def __init__(self, url, code, msg=None):
         super(DownloadFailed, self).__init__(url, code, msg)
+
     def __str__(self):
         return 'Download of %s failed with code %d: %s' % tuple(a for a in self.args)
 
 
 class SkipLocation(Exception):
     pass
+
+
+class RetryError(Exception):
+    def __init__(self, url):
+        super(RetryError, self).__init__(url)
+
+    def __str__(self):
+        return 'Download of %s failed and reached maximum retries' % self.args[0]
+
 
 # -- downloader class ----------------------------------------------------------
 
@@ -65,7 +64,17 @@ class HTTPThreadedDownloader(Downloader):
     HTTP, HTTPS and proxied download requests by the server.
     """
 
-    def __init__(self, config, event_listener=None):
+    def __init__(self, config, event_listener=None, tries=DEFAULT_TRIES):
+        """
+        :param config: downloader configuration
+        :type config: nectar.config.DownloaderConfig
+        :param event_listener: event listener providing life-cycly callbacks
+        :type event_listener: nectar.listener.DownloadEventListener
+        :param tries: total number of requests made to the remote server,
+                      including first unsuccessful one
+        :type tries: str
+        """
+
         super(HTTPThreadedDownloader, self).__init__(config, event_listener)
 
         # throttling support
@@ -76,9 +85,12 @@ class HTTPThreadedDownloader(Downloader):
         # thread-safety when firing events
         self._event_lock = threading.Lock()
 
+        # default tries to fetch item
+        self.tries = tries
+
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
-        
+
     @property
     def buffer_size(self):
         return self.config.buffer_size or DEFAULT_BUFFER_SIZE
@@ -100,18 +112,15 @@ class HTTPThreadedDownloader(Downloader):
         """
         try:
             session = build_session(self.config)
-
             while True:
                 request = queue.get()
-
                 if request is None or self.is_canceled:
                     session.close()
                     break
-
                 self._fetch(request, session)
-
         except:
-            _logger.exception('Unhandled Exception in Worker Thread [%s]' % threading.currentThread().ident)
+            msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
+            _logger.exception(msg)
 
     def download(self, request_list):
         worker_threads = []
@@ -187,12 +196,11 @@ class HTTPThreadedDownloader(Downloader):
         headers = (request.headers or {}).copy()
         ignore_encoding, additional_headers = self._rfc2616_workaround(request)
         headers.update(additional_headers or {})
-        max_speed = self._calculate_max_speed() # None or integer in bytes/second
+        max_speed = self._calculate_max_speed()  # None or integer in bytes/second
         report = DownloadReport.from_download_request(request)
         report.download_started()
         self.fire_download_started(report)
         netloc = urlparse.urlparse(request.url).netloc
-
         try:
             if self.is_canceled:
                 raise DownloadCancelled(request.url)
@@ -200,9 +208,26 @@ class HTTPThreadedDownloader(Downloader):
             if netloc in self.failed_netlocs:
                 raise SkipLocation()
 
-            response = session.get(
-                request.url, headers=headers, timeout=(self.config.connect_timeout, self.config.read_timeout)
-            )
+            for attempt in xrange(self.tries):
+                try:
+                    if attempt > 0:
+                        msg = _("Re-trying {url} due to remote server connection failure.".format(
+                            url=request.url)
+                        )
+                        _logger.warning(msg)
+                    response = session.get(
+                        request.url, headers=headers, timeout=(self.config.connect_timeout,
+                                                               self.config.read_timeout)
+                    )
+                    break
+                except requests.ConnectionError as e:
+                    if isinstance(e.strerror, httplib.BadStatusLine):
+                        msg = _("Download of {url} failed. Re-trying.".format(url=request.url))
+                        _logger.warning(msg)
+                        continue
+                    raise
+            else:
+                raise RetryError(request.url)
 
             report.headers = response.headers
 
@@ -257,10 +282,15 @@ class HTTPThreadedDownloader(Downloader):
             )
             report.download_skipped()
 
-        except requests.ConnectionError:
+        except requests.ConnectionError as e:
             _logger.warning("Connection Error - {url} could not be reached.".format(
                 url=request.url)
             )
+            self.failed_netlocs.add(netloc)
+            report.download_connection_error()
+
+        except RetryError as e:
+            _logger.warning(str(e))
             self.failed_netlocs.add(netloc)
             report.download_connection_error()
 
@@ -274,18 +304,18 @@ class HTTPThreadedDownloader(Downloader):
             )
             report.download_connection_error()
 
-        except DownloadCancelled, e:
+        except DownloadCancelled as e:
             _logger.debug(str(e))
             report.download_canceled()
 
-        except DownloadFailed, e:
+        except DownloadFailed as e:
             _logger.debug('download failed: %s' % str(e))
             report.error_msg = e.args[2]
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
             report.download_failed()
 
-        except Exception, e:
+        except Exception as e:
             _logger.exception(e)
             report.error_msg = str(e)
             report.download_failed()
@@ -297,7 +327,7 @@ class HTTPThreadedDownloader(Downloader):
 
         if report.state is DOWNLOAD_SUCCEEDED:
             self.fire_download_succeeded(report)
-        else: # DOWNLOAD_FAILED
+        else:  # DOWNLOAD_FAILED
             self.fire_download_failed(report)
 
         return report
@@ -330,21 +360,24 @@ class HTTPThreadedDownloader(Downloader):
         max_speed = self.config.max_speed
 
         if max_speed is not None:
-            max_speed -= (2 * self.buffer_size) # because we test *after* reading and only sleep for 1/2 second
-            max_speed = max(max_speed, (2 * self.buffer_size)) # because we cannot go slower
+            # because we test *after* reading and only sleep for 1/2 second
+            max_speed -= (2 * self.buffer_size)
+            max_speed = max(max_speed, (2 * self.buffer_size))  # because we cannot go slower
 
         return max_speed
 
     def _fire_event_to_listener(self, event_listener_callback, *args, **kwargs):
         # thread-safe event firing
         with self._event_lock:
-            super(HTTPThreadedDownloader, self)._fire_event_to_listener(event_listener_callback, *args, **kwargs)
+            super(HTTPThreadedDownloader, self)._fire_event_to_listener(event_listener_callback,
+                                                                        *args, **kwargs)
 
 # -- requests utilities --------------------------------------------------------
 
+
 def build_session(config):
     session = requests.Session()
-    session.stream = True # required for reading the download in chunks
+    session.stream = True  # required for reading the download in chunks
     _add_basic_auth(session, config)
     _add_ssl(session, config)
     _add_proxy(session, config)
@@ -393,13 +426,14 @@ def _add_proxy(session, config):
         proxy_password = config.get('proxy_password', '')
         if None in (config.basic_auth_username, config.basic_auth_password):
             # bz 1021662 - Proxy authentiation using username and password in session.proxies urls
-            # does not setup correct headers in the http download request because of a bug in urllib3.
-            # This is an alternate approach which sets up the headers correctly.
+            # does not setup correct headers in the http download request because of a bug in
+            # urllib3. This is an alternate approach which sets up the headers correctly.
             session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
         else:
-            # The approach mentioned above works well except when a basic user authentication is used,
-            # along with the proxy authentication. Therefore, we define and use a custom class
-            # which inherits AuthBase class provided by the requests library to add the headers correctly.
+            # The approach mentioned above works well except when a basic user authentication is
+            # used, along with the proxy authentication. Therefore, we define and use a custom class
+            # which inherits AuthBase class provided by the requests library to add the headers
+            # correctly.
             session.auth = HTTPBasicWithProxyAuth(config.basic_auth_username,
                                                   config.basic_auth_password,
                                                   config.proxy_username,

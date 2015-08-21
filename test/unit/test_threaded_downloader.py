@@ -1,16 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the License
-# (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied, including the
-# implied warranties of MERCHANTABILITY, NON-INFRINGEMENT, or FITNESS FOR A
-# PARTICULAR PURPOSE.
-# You should have received a copy of GPLv2 along with this software;
-# if not, see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
-
 from cStringIO import StringIO
 import datetime
 import httplib
@@ -33,6 +20,7 @@ from nectar.config import DownloaderConfig
 from nectar.downloaders import threaded
 from nectar.report import DownloadReport
 from nectar.request import DownloadRequest
+
 
 # -- instantiation tests -------------------------------------------------------
 
@@ -226,7 +214,8 @@ class TestFetch(unittest.TestCase):
         self.downloader._fetch(req, session)
 
         session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'},
-                                            timeout=(self.config.connect_timeout, self.config.read_timeout))
+                                            timeout=(self.config.connect_timeout,
+                                                     self.config.read_timeout))
 
     def test_response_headers(self):
         """
@@ -260,7 +249,8 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
         session.get.assert_called_once_with(URL, headers={'accept-encoding': ''},
-                                            timeout=(self.config.connect_timeout, self.config.read_timeout))
+                                            timeout=(self.config.connect_timeout,
+                                                     self.config.read_timeout))
 
     def test_normal_content_encoding(self):
         URL = 'http://pulpproject.org/primary.xml'
@@ -278,7 +268,7 @@ class TestFetch(unittest.TestCase):
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
         session.get.assert_called_once_with(URL, headers={}, timeout=(self.config.connect_timeout,
-                                                    self.config.read_timeout))
+                                            self.config.read_timeout))
 
     def test_fetch_with_connection_error(self):
         """
@@ -294,7 +284,10 @@ class TestFetch(unittest.TestCase):
             req = DownloadRequest(URL, StringIO())
             session = threaded.build_session(self.config)
             session.get = connection_error
-            report = self.downloader._fetch(req, session)
+            try:
+                report = self.downloader._fetch(req, session)
+            except ConnectionError:
+                raise AssertionError("ConnectionError should be raised")
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
             self.assertIn('pulpproject.org', self.downloader.failed_netlocs)
@@ -311,6 +304,36 @@ class TestFetch(unittest.TestCase):
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
 
             self.assertIn(expected_log_message, log_calls)
+
+    def test_fetch_with_connection_error_badstatusline(self):
+        """
+        Test that the baseurl is tried again if ConnectionError reason BadStatusLine happened.
+        """
+
+        # requests.ConnectionError
+        def connection_error(*args, **kwargs):
+            raise ConnectionError('Connection aborted.', httplib.BadStatusLine("''",))
+
+        with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
+            URL = 'http://pulpproject.org/primary.xml'
+            req = DownloadRequest(URL, StringIO())
+            session = threaded.build_session(self.config)
+            session.get = mock.MagicMock()
+            session.get.side_effect = connection_error
+
+            self.downloader._fetch(req, session)
+
+            self.assertEqual(session.get.call_count, 2)
+
+            expected_log_msg = ['Download of http://pulpproject.org/primary.xml failed. Re-trying.',
+                                'Re-trying http://pulpproject.org/primary.xml due to remote server '
+                                'connection failure.',
+                                'Download of http://pulpproject.org/primary.xml failed. Re-trying.',
+                                'Download of http://pulpproject.org/primary.xml failed and reached '
+                                'maximum retries']
+            log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
+
+            self.assertEqual(expected_log_msg, log_calls)
 
     def test_fetch_with_timeout(self):
         """
@@ -343,6 +366,7 @@ class TestFetch(unittest.TestCase):
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
 
             self.assertIn(expected_log_message, log_calls)
+
 
 class TestDownloadOne(unittest.TestCase):
     @mock.patch.object(threaded.HTTPThreadedDownloader, '_fetch', spec_set=True)
