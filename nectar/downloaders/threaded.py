@@ -121,6 +121,9 @@ class HTTPThreadedDownloader(Downloader):
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
             _logger.exception(msg)
+            # cancelling the download in case of unhandled exception, otherwise we will get stuck
+            # in the infinite loop in download() method
+            self.cancel()
 
     def download(self, request_list):
         worker_threads = []

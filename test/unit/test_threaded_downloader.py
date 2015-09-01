@@ -149,6 +149,27 @@ class LiveDownloadingTests(base.NectarTests):
         self.assertEqual(len(lst.failed_reports), 1)
         self.assertTrue(lst.failed_reports[0].error_msg is not None)
 
+    def test_download_unhandled_exception(self):
+        with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
+            cfg = config.DownloaderConfig()
+            lst = listener.AggregatingEventListener()
+            downloader = threaded.HTTPThreadedDownloader(cfg, lst)
+
+            URL = 'http://example.com'
+            req = DownloadRequest(URL, StringIO())
+            session = mock.MagicMock(side_effect=TypeError(), spec_set=threaded.build_session)
+
+            downloader.download([req, session])
+
+            self.assertTrue(downloader.is_canceled)
+
+            expected_log_message = 'Unhandled Exception in Worker Thread'
+            log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
+            self.assertIn(expected_log_message, log_calls[1])
+
+            self.assertEqual(len(lst.succeeded_reports), 0)
+            self.assertEqual(len(lst.failed_reports), 1)
+
     def test_multiple_downloads(self):
         cfg = config.DownloaderConfig()
         lst = listener.AggregatingEventListener()
