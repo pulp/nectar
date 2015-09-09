@@ -25,6 +25,15 @@ class TestDownloadOne(unittest.TestCase):
 
         self.assertEqual(len(listener.succeeded_reports), 0)
 
+    def test_does_fires_events(self):
+        # collect the success event in this listener if one is fired
+        listener = AggregatingEventListener()
+        downloader = LyingDownloader(DownloaderConfig(), listener)
+
+        downloader.download_one(self.request, events=True)
+
+        self.assertEqual(len(listener.succeeded_reports), 1)
+
     def test_returns_report(self):
         downloader = LyingDownloader(DownloaderConfig())
 

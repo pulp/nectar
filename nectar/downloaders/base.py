@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright © 2013 Red Hat, Inc.
-#
-# This software is licensed to you under the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the License
-# (GPLv2) or (at your option) any later version.
-# There is NO WARRANTY for this software, express or implied, including the
-# implied warranties of MERCHANTABILITY, NON-INFRINGEMENT, or FITNESS FOR A
-# PARTICULAR PURPOSE.
-# You should have received a copy of GPLv2 along with this software; if not,
-# see http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 
 import logging
 
@@ -60,19 +49,21 @@ class Downloader(object):
         """
         raise NotImplementedError()
 
-    def download_one(self, request):
+    def download_one(self, request, events=False):
         """
         Downloads one url, blocks, and returns a DownloadReport.
 
         :param request: download request object with details about what to
                         download and where to put it
         :type  request: nectar.request.DownloadRequest
+        :param events:  defaults to False and sets fire_events variable value
+        :type  events:  bool
 
         :return:    download report
         :rtype:     nectar.report.DownloadReport
         """
-        # don't fire events to a listener for this synchronous call
-        self.fire_events = False
+        # by default don't fire events to a listener for this synchronous call
+        self.fire_events = events
         try:
             return self._download_one(request)
         finally:
@@ -100,6 +91,15 @@ class Downloader(object):
         self.is_canceled = True
 
     # events api ---------------------------------------------------------------
+
+    def fire_download_headers(self, report):
+        """
+        Fire the ``download_headers`` event using the download report provided.
+
+        :param report: download reports
+        :type report: nectar.report.DownloadReport
+        """
+        self._fire_event_to_listener(self.event_listener.download_headers, report)
 
     def fire_download_started(self, report):
         """
