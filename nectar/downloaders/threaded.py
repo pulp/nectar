@@ -218,10 +218,14 @@ class HTTPThreadedDownloader(Downloader):
                             url=request.url)
                         )
                         _logger.warning(msg)
-                    response = session.get(
-                        request.url, headers=headers, timeout=(self.config.connect_timeout,
-                                                               self.config.read_timeout)
-                    )
+
+                    response = session.get(request.url, headers=headers,
+                                           timeout=(self.config.connect_timeout,
+                                                    self.config.read_timeout))
+
+                    report.headers = response.headers
+                    self.fire_download_headers(report)
+
                     break
                 except requests.ConnectionError as e:
                     if isinstance(e.strerror, httplib.BadStatusLine):
@@ -231,8 +235,6 @@ class HTTPThreadedDownloader(Downloader):
                     raise
             else:
                 raise RetryError(request.url)
-
-            report.headers = response.headers
 
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
