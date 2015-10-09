@@ -421,6 +421,7 @@ def _add_proxy(session, config):
     if config.proxy_username is not None:
         password_part = config.get('proxy_password', '') and ':%s' % config.proxy_password
         auth = config.proxy_username + password_part
+        auth = urllib.quote(auth, safe=':')
         url = '@'.join((auth, url))
 
     session.proxies['https'] = '://'.join((protocol, url))

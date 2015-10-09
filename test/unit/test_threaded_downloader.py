@@ -53,8 +53,8 @@ class InstantiationTests(base.NectarTests):
                   'ssl_client_key_path': os.path.join(_find_data_directory(), 'pki/bogus/key.pem'),
                   'proxy_url': 'https://invalid-proxy.com',
                   'proxy_port': 1234,
-                  'proxy_username': 'anonymous',
-                  'proxy_password': 'anonymous'}
+                  'proxy_username': 'anon?ymous',
+                  'proxy_password': 'anonymous$'}
         proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
 
         cfg = config.DownloaderConfig(**kwargs)
@@ -72,13 +72,14 @@ class InstantiationTests(base.NectarTests):
 
         self.assertEqual(session.cert,
                          (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
+        # test proxy username and passwod are url encoded before sending the request
         self.assertEqual(session.proxies,
-                         {'http': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
-                                                           kwargs['proxy_password'],
+                         {'http': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
+                                                           urllib.quote(kwargs['proxy_password']),
                                                            proxy_host,
                                                            kwargs['proxy_port']),
-                          'https': 'https://%s:%s@%s:%d' % (kwargs['proxy_username'],
-                                                            kwargs['proxy_password'],
+                          'https': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
+                                                            urllib.quote(kwargs['proxy_password']),
                                                             proxy_host,
                                                             kwargs['proxy_port'])})
 
