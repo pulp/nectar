@@ -210,6 +210,10 @@ class HTTPThreadedDownloader(Downloader):
 
             if netloc in self.failed_netlocs:
                 raise SkipLocation()
+                
+            _logger.debug("Attempting to connect to {url}.".format(
+                url=request.url)
+            )
 
             for attempt in xrange(self.tries):
                 try:
