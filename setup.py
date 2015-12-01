@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 
+
 setup(name='nectar',
       version='1.4.1',
       url='https://github.com/pulp/nectar',
@@ -18,11 +19,10 @@ setup(name='nectar',
                    'Operating System :: POSIX',
                    'Programming Language :: Python :: 2.6',
                    'Programming Language :: Python :: 2.7',
-                   'Topic :: Software Development :: Libraries :: Python Modules',],
+                   'Topic :: Software Development :: Libraries :: Python Modules'],
 
       options={'build': {'build_base': '_build'},
-               'sdist': {'dist_dir': '_dist'},},
+               'sdist': {'dist_dir': '_dist'}},
 
       install_requires=['isodate >= 0.4.9',
-                        'requests >= 2.0.0',],)
-
+                        'requests >= 2.0.0'],)
