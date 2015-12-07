@@ -156,7 +156,7 @@ class LiveDownloadingTests(base.NectarTests):
             lst = listener.AggregatingEventListener()
             downloader = threaded.HTTPThreadedDownloader(cfg, lst)
 
-            URL = 'http://example.com'
+            URL = 'http://localhost:%d/' % self.server_port
             req = DownloadRequest(URL, StringIO())
             session = mock.MagicMock(side_effect=TypeError(), spec_set=threaded.build_session)
 
@@ -225,7 +225,7 @@ class TestFetch(unittest.TestCase):
         self.downloader = threaded.HTTPThreadedDownloader(self.config, self.listener)
 
     def test_request_headers(self):
-        URL = 'http://pulpproject.org/robots.txt'
+        URL = 'http://fakeurl/robots.txt'
         req = DownloadRequest(URL, StringIO(), headers={'pulp_header': 'awesome!'})
         response = Response()
         response.status_code = httplib.OK
@@ -244,7 +244,7 @@ class TestFetch(unittest.TestCase):
         Make sure that whatever headers come back on the response get added
         to the report.
         """
-        URL = 'http://pulpproject.org/robots.txt'
+        URL = 'http://fakeurl/robots.txt'
         req = DownloadRequest(URL, StringIO(), headers={'pulp_header': 'awesome!'})
         response = Response()
         response.status_code = httplib.OK
@@ -258,7 +258,7 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(report.headers['content-length'], '1024')
 
     def test_wrong_content_encoding(self):
-        URL = 'http://pulpproject.org/primary.xml.gz'
+        URL = 'http://fakeurl/primary.xml.gz'
         req = DownloadRequest(URL, StringIO())
         response = Response()
         response.status_code = httplib.OK
@@ -275,7 +275,7 @@ class TestFetch(unittest.TestCase):
                                                      self.config.read_timeout))
 
     def test_normal_content_encoding(self):
-        URL = 'http://pulpproject.org/primary.xml'
+        URL = 'http://fakeurl/primary.xml'
         req = DownloadRequest(URL, StringIO())
         response = Response()
         response.status_code = httplib.OK
@@ -302,7 +302,7 @@ class TestFetch(unittest.TestCase):
             raise ConnectionError()
 
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
-            URL = 'http://pulpproject.org/primary.xml'
+            URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
             session = threaded.build_session(self.config)
             session.get = connection_error
@@ -312,7 +312,7 @@ class TestFetch(unittest.TestCase):
                 raise AssertionError("ConnectionError should be raised")
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
-            self.assertIn('pulpproject.org', self.downloader.failed_netlocs)
+            self.assertIn('fakeurl', self.downloader.failed_netlocs)
 
             session2 = threaded.build_session(self.config)
             session2.get = mock.MagicMock()
@@ -321,7 +321,7 @@ class TestFetch(unittest.TestCase):
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
             self.assertEqual(session2.get.call_count, 0)
 
-            expected_log_message = "Connection Error - http://pulpproject.org/primary.xml " \
+            expected_log_message = "Connection Error - http://fakeurl/primary.xml " \
                                    "could not be reached."
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
 
@@ -337,7 +337,7 @@ class TestFetch(unittest.TestCase):
             raise ConnectionError('Connection aborted.', httplib.BadStatusLine("''",))
 
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
-            URL = 'http://pulpproject.org/primary.xml'
+            URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
             session = threaded.build_session(self.config)
             session.get = mock.MagicMock()
@@ -347,11 +347,11 @@ class TestFetch(unittest.TestCase):
 
             self.assertEqual(session.get.call_count, 2)
 
-            expected_log_msg = ['Download of http://pulpproject.org/primary.xml failed. Re-trying.',
-                                'Re-trying http://pulpproject.org/primary.xml due to remote server '
+            expected_log_msg = ['Download of http://fakeurl/primary.xml failed. Re-trying.',
+                                'Re-trying http://fakeurl/primary.xml due to remote server '
                                 'connection failure.',
-                                'Download of http://pulpproject.org/primary.xml failed. Re-trying.',
-                                'Download of http://pulpproject.org/primary.xml failed and reached '
+                                'Download of http://fakeurl/primary.xml failed. Re-trying.',
+                                'Download of http://fakeurl/primary.xml failed and reached '
                                 'maximum retries']
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
 
@@ -367,14 +367,14 @@ class TestFetch(unittest.TestCase):
             raise Timeout()
 
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
-            URL = 'http://pulpproject.org/primary.xml'
+            URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
             session = threaded.build_session(self.config)
             session.get = timeout
             report = self.downloader._fetch(req, session)
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
-            self.assertNotIn('pulpproject.org', self.downloader.failed_netlocs)
+            self.assertNotIn('fakeurl', self.downloader.failed_netlocs)
 
             session2 = threaded.build_session(self.config)
             session2.get = mock.MagicMock()
@@ -384,7 +384,7 @@ class TestFetch(unittest.TestCase):
             self.assertEqual(session2.get.call_count, 1)
 
             expected_log_message = "Request Timeout - Connection with " \
-                                   "http://pulpproject.org/primary.xml timed out."
+                                   "http://fakeurl/primary.xml timed out."
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
 
             self.assertIn(expected_log_message, log_calls)

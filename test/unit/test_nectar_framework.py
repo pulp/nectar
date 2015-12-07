@@ -7,7 +7,7 @@ import base
 
 class DownloadRequestTests(base.NectarTests):
     def test__init__(self):
-        url = 'http://www.theonion.com/articles/world-surrenders-to-north-korea,31265/'
+        url = 'http://www.fakeurl.com/articles/world-surrenders-to-pulp/'
         path = '/fake/path'
         request = DownloadRequest(url, path)
         self.assertEqual(request.url, url)
