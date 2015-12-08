@@ -5,11 +5,17 @@ HTTP test server for writing tests against an "external" server.
 """
 
 import atexit
+import socket
 import threading
 from BaseHTTPServer import HTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 # -- static http test server class ---------------------------------------------
+
+
+class HTTPServerIPV6(HTTPServer):
+    address_family = socket.AF_INET6
+
 
 class HTTPStaticTestServer(object):
     """
@@ -28,7 +34,7 @@ class HTTPStaticTestServer(object):
     """
 
     def __init__(self, port=8088):
-        self.server = HTTPServer(('', port), SimpleHTTPRequestHandler)
+        self.server = HTTPServerIPV6(('', port), SimpleHTTPRequestHandler)
         self.server.timeout = 0.1 # timeout after a tenth of a second
         self._is_running = False
         self._server_thread = None
