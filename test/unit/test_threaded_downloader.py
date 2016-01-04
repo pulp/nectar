@@ -166,7 +166,7 @@ class LiveDownloadingTests(base.NectarTests):
 
             expected_log_message = 'Unhandled Exception in Worker Thread'
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
-            self.assertIn(expected_log_message, log_calls[1])
+            self.assertIn(expected_log_message, log_calls[2])
 
             self.assertEqual(len(lst.succeeded_reports), 0)
             self.assertEqual(len(lst.failed_reports), 1)
@@ -347,7 +347,8 @@ class TestFetch(unittest.TestCase):
 
             self.assertEqual(session.get.call_count, 2)
 
-            expected_log_msg = ['Download of http://fakeurl/primary.xml failed. Re-trying.',
+            expected_log_msg = ['Attempting to connect to http://fakeurl/primary.xml.',
+                                'Download of http://fakeurl/primary.xml failed. Re-trying.',
                                 'Re-trying http://fakeurl/primary.xml due to remote server '
                                 'connection failure.',
                                 'Download of http://fakeurl/primary.xml failed. Re-trying.',
