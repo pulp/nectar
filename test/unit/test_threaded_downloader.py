@@ -239,6 +239,15 @@ class TestFetch(unittest.TestCase):
                                             timeout=(self.config.connect_timeout,
                                                      self.config.read_timeout))
 
+    @mock.patch('nectar.downloaders.threaded.DownloadReport.from_download_request')
+    def test_request_cancel(self, mock_from_request):
+        url = 'http://fakeurl/robots.txt'
+        req = DownloadRequest(url, mock.Mock())
+        req.canceled = True
+
+        self.downloader._fetch(req, mock.Mock())
+        mock_from_request.return_value.download_canceled.assert_called_once_with()
+
     def test_response_headers(self):
         """
         Make sure that whatever headers come back on the response get added

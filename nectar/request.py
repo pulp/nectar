@@ -28,6 +28,7 @@ class DownloadRequest(object):
         self.destination = destination
         self.data = data
         self.headers = headers
+        self.canceled = False
 
         self._file_handle = None
 

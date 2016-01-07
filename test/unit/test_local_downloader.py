@@ -181,6 +181,20 @@ class GoodDownloadTests(DownloadTests):
         # make sure the no writing was attempted
         self.assertEqual(mock_open.return_value.write.call_count, 0)
 
+    @mock.patch('__builtin__.open')
+    @mock.patch('nectar.report.DownloadReport.download_canceled')
+    def test_copy_canceled_single_request(self, mock_canceled, mock_open):
+        downloader = local.LocalFileDownloader(DownloaderConfig())
+        request = DownloadRequest('file://' + __file__, '/bar')
+        request.canceled = True
+
+        downloader._copy(request)
+
+        # make sure the cancel method was called on the report
+        mock_canceled.assert_called_once_with()
+        # make sure the no writing was attempted
+        self.assertEqual(mock_open.return_value.write.call_count, 0)
+
     def test_copy_download(self):
         config = DownloaderConfig()
         listener = AggregatingEventListener()

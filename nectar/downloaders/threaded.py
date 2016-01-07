@@ -205,7 +205,7 @@ class HTTPThreadedDownloader(Downloader):
         self.fire_download_started(report)
         netloc = urlparse.urlparse(request.url).netloc
         try:
-            if self.is_canceled:
+            if self.is_canceled or request.canceled:
                 raise DownloadCancelled(request.url)
 
             if netloc in self.failed_netlocs:
@@ -253,7 +253,7 @@ class HTTPThreadedDownloader(Downloader):
                 chunks = response.iter_content(self.buffer_size)
 
             for chunk in chunks:
-                if self.is_canceled:
+                if self.is_canceled or request.canceled:
                     raise DownloadCancelled(request.url)
 
                 file_handle.write(chunk)
