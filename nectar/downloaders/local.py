@@ -139,7 +139,7 @@ class LocalFileDownloader(Downloader):
 
             while True:
 
-                if self.is_canceled:
+                if self.is_canceled or request.canceled:
                     report.download_canceled()
                     # NOTE the control flow here will pass through the finally
                     # block on the way out, but not the else block :D
@@ -201,7 +201,7 @@ class LocalFileDownloader(Downloader):
         report.download_started()
         self.fire_download_started(report)
 
-        if self.is_canceled:
+        if self.is_canceled or request.canceled:
             report.download_canceled()
             return report
 
