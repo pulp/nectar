@@ -8,8 +8,8 @@ from gettext import gettext as _
 from logging import getLogger
 
 import requests
+from requests_toolbelt.auth.guess import GuessProxyAuth
 
-from nectar.config import HTTPBasicWithProxyAuth
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
 
@@ -424,32 +424,17 @@ def _add_proxy(session, config):
     host, remainder = urllib.splithost(remainder)
     url = ':'.join((host, str(config.proxy_port)))
 
-    if config.proxy_username is not None:
-        password_part = config.get('proxy_password', '') and ':%s' % config.proxy_password
-        auth = config.proxy_username + password_part
-        auth = urllib.quote(auth, safe=':')
-        url = '@'.join((auth, url))
-
     session.proxies['https'] = '://'.join((protocol, url))
     session.proxies['http'] = '://'.join((protocol, url))
 
     # Set session.auth if proxy username is specified
     if config.proxy_username is not None:
         proxy_password = config.get('proxy_password', '')
-        if None in (config.basic_auth_username, config.basic_auth_password):
-            # bz 1021662 - Proxy authentiation using username and password in session.proxies urls
-            # does not setup correct headers in the http download request because of a bug in
-            # urllib3. This is an alternate approach which sets up the headers correctly.
-            session.auth = requests.auth.HTTPProxyAuth(config.proxy_username, proxy_password)
-        else:
-            # The approach mentioned above works well except when a basic user authentication is
-            # used, along with the proxy authentication. Therefore, we define and use a custom class
-            # which inherits AuthBase class provided by the requests library to add the headers
-            # correctly.
-            session.auth = HTTPBasicWithProxyAuth(config.basic_auth_username,
-                                                  config.basic_auth_password,
-                                                  config.proxy_username,
-                                                  proxy_password)
+        session.auth = GuessProxyAuth(username=config.basic_auth_username,
+                                      password=config.basic_auth_password,
+                                      proxy_username=config.proxy_username,
+                                      proxy_password=proxy_password)
+
 
 # -- thread-safe generator queue -----------------------------------------------
 
