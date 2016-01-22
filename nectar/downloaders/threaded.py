@@ -82,12 +82,12 @@ class HTTPThreadedDownloader(Downloader):
         super(HTTPThreadedDownloader, self).__init__(config, event_listener)
 
         # throttling support
-        self._bytes_lock = threading.Lock()
+        self._bytes_lock = threading.RLock()
         self._bytes_this_second = 0
         self._time_bytes_this_second_was_cleared = datetime.datetime.now()
 
         # thread-safety when firing events
-        self._event_lock = threading.Lock()
+        self._event_lock = threading.RLock()
 
         # default tries to fetch item
         self.tries = tries
