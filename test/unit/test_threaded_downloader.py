@@ -43,7 +43,7 @@ class InstantiationTests(base.NectarTests):
         self.assertEqual(downloader.progress_interval,
                          datetime.timedelta(seconds=threaded.DEFAULT_PROGRESS_INTERVAL))
 
-    def test_build_session(self):
+    def test_configure_session(self):
         kwargs = {'basic_auth_username': 'admin',
                   'basic_auth_password': 'admin',
                   'headers': {'pulp-header': 'awesome!'},
@@ -154,22 +154,16 @@ class LiveDownloadingTests(base.NectarTests):
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
             cfg = config.DownloaderConfig()
             lst = listener.AggregatingEventListener()
-            downloader = threaded.HTTPThreadedDownloader(cfg, lst)
+            downloader = threaded.HTTPThreadedDownloader(cfg, lst, session=mock.Mock())
+            downloader._fetch = mock.Mock(side_effect=OSError)
 
-            URL = 'http://localhost:%d/' % self.server_port
-            req = DownloadRequest(URL, StringIO())
-            session = mock.MagicMock(side_effect=TypeError(), spec_set=threaded.build_session)
-
-            downloader.download([req, session])
+            downloader.download([mock.Mock()])
 
             self.assertTrue(downloader.is_canceled)
 
             expected_log_message = 'Unhandled Exception in Worker Thread'
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
-            self.assertIn(expected_log_message, log_calls[2])
-
-            self.assertEqual(len(lst.succeeded_reports), 0)
-            self.assertEqual(len(lst.failed_reports), 1)
+            self.assertIn(expected_log_message, log_calls[1])
 
     def test_multiple_downloads(self):
         cfg = config.DownloaderConfig()
@@ -222,7 +216,9 @@ class TestFetch(unittest.TestCase):
     def setUp(self):
         self.config = config.DownloaderConfig()
         self.listener = listener.AggregatingEventListener()
-        self.downloader = threaded.HTTPThreadedDownloader(self.config, self.listener)
+        self.session = mock.Mock()
+        self.downloader = threaded.HTTPThreadedDownloader(self.config, self.listener,
+                                                          session=self.session)
 
     def test_request_headers(self):
         URL = 'http://fakeurl/robots.txt'
@@ -230,14 +226,15 @@ class TestFetch(unittest.TestCase):
         response = Response()
         response.status_code = httplib.OK
         response.raw = StringIO('abc')
-        session = threaded.build_session(self.config)
-        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+        self.session.get = mock.MagicMock(return_value=response, spec_set=self.session.get)
 
-        self.downloader._fetch(req, session)
+        self.downloader._fetch(req)
 
-        session.get.assert_called_once_with(URL, headers={'pulp_header': 'awesome!'},
-                                            timeout=(self.config.connect_timeout,
-                                                     self.config.read_timeout))
+        self.session.get.assert_called_once_with(
+            URL,
+            headers={'pulp_header': 'awesome!'},
+            timeout=(self.config.connect_timeout, self.config.read_timeout)
+        )
 
     @mock.patch('nectar.downloaders.threaded.DownloadReport.from_download_request')
     def test_request_cancel(self, mock_from_request):
@@ -245,7 +242,7 @@ class TestFetch(unittest.TestCase):
         req = DownloadRequest(url, mock.Mock())
         req.canceled = True
 
-        self.downloader._fetch(req, mock.Mock())
+        self.downloader._fetch(req)
         mock_from_request.return_value.download_canceled.assert_called_once_with()
 
     def test_response_headers(self):
@@ -259,10 +256,9 @@ class TestFetch(unittest.TestCase):
         response.status_code = httplib.OK
         response.headers = {'content-length': '1024'}
         response.raw = StringIO('abc')
-        session = threaded.build_session(self.config)
-        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+        self.session.get.return_value = response
 
-        report = self.downloader._fetch(req, session)
+        report = self.downloader._fetch(req)
 
         self.assertEqual(report.headers['content-length'], '1024')
 
@@ -272,16 +268,15 @@ class TestFetch(unittest.TestCase):
         response = Response()
         response.status_code = httplib.OK
         response.raw = StringIO('abc')
-        session = threaded.build_session(self.config)
-        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+        self.session.get.return_value = response
 
-        report = self.downloader._fetch(req, session)
+        report = self.downloader._fetch(req)
 
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
-        session.get.assert_called_once_with(URL, headers={'accept-encoding': ''},
-                                            timeout=(self.config.connect_timeout,
-                                                     self.config.read_timeout))
+        self.session.get.assert_called_once_with(URL, headers={'accept-encoding': ''},
+                                                 timeout=(self.config.connect_timeout,
+                                                          self.config.read_timeout))
 
     def test_normal_content_encoding(self):
         URL = 'http://fakeurl/primary.xml'
@@ -289,17 +284,16 @@ class TestFetch(unittest.TestCase):
         response = Response()
         response.status_code = httplib.OK
         response.iter_content = mock.MagicMock(return_value=['abc'], spec_set=response.iter_content)
-        session = threaded.build_session(self.config)
-        session.get = mock.MagicMock(return_value=response, spec_set=session.get)
+        self.session.get = mock.MagicMock(return_value=response, spec_set=self.session.get)
 
-        report = self.downloader._fetch(req, session)
+        report = self.downloader._fetch(req)
 
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
-        session.get.assert_called_once_with(URL, headers={}, timeout=(self.config.connect_timeout,
-                                            self.config.read_timeout))
+        self.session.get.assert_called_once_with(
+            URL, headers={}, timeout=(self.config.connect_timeout, self.config.read_timeout))
 
     def test_fetch_with_connection_error(self):
         """
@@ -313,22 +307,18 @@ class TestFetch(unittest.TestCase):
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
             URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
-            session = threaded.build_session(self.config)
-            session.get = connection_error
+            self.session.get = connection_error
             try:
-                report = self.downloader._fetch(req, session)
+                report = self.downloader._fetch(req)
             except ConnectionError:
                 raise AssertionError("ConnectionError should be raised")
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
             self.assertIn('fakeurl', self.downloader.failed_netlocs)
 
-            session2 = threaded.build_session(self.config)
-            session2.get = mock.MagicMock()
-            report2 = self.downloader._fetch(req, session2)
+            report2 = self.downloader._fetch(req)
 
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
-            self.assertEqual(session2.get.call_count, 0)
 
             expected_log_message = "Connection Error - http://fakeurl/primary.xml " \
                                    "could not be reached."
@@ -348,13 +338,11 @@ class TestFetch(unittest.TestCase):
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
             URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
-            session = threaded.build_session(self.config)
-            session.get = mock.MagicMock()
-            session.get.side_effect = connection_error
+            self.session.get.side_effect = connection_error
 
-            self.downloader._fetch(req, session)
+            self.downloader._fetch(req)
 
-            self.assertEqual(session.get.call_count, 2)
+            self.assertEqual(self.session.get.call_count, 2)
 
             expected_log_msg = ['Attempting to connect to http://fakeurl/primary.xml.',
                                 'Download of http://fakeurl/primary.xml failed. Re-trying.',
@@ -372,26 +360,21 @@ class TestFetch(unittest.TestCase):
         Test that the report state is failed and that the baseurl can be tried again.
         """
 
-        # requests.ConnectionError
-        def timeout(*args, **kwargs):
-            raise Timeout()
-
         with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
             URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
-            session = threaded.build_session(self.config)
-            session.get = timeout
-            report = self.downloader._fetch(req, session)
+            self.session.get.side_effect = Timeout
+            report = self.downloader._fetch(req)
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
             self.assertNotIn('fakeurl', self.downloader.failed_netlocs)
 
             session2 = threaded.build_session(self.config)
             session2.get = mock.MagicMock()
-            report2 = self.downloader._fetch(req, session2)
+            report2 = self.downloader._fetch(req)
 
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
-            self.assertEqual(session2.get.call_count, 1)
+            self.assertEqual(self.session.get.call_count, 2)
 
             expected_log_message = "Request Timeout - Connection with " \
                                    "http://fakeurl/primary.xml timed out."
@@ -414,7 +397,6 @@ class TestDownloadOne(unittest.TestCase):
         self.assertEqual(mock_fetch.call_count, 1)
         self.assertTrue(ret is report)
         self.assertTrue(mock_fetch.call_args[0][0] is request)
-        self.assertTrue(isinstance(mock_fetch.call_args[0][1], Session))
 
 
 # -- utilities -----------------------------------------------------------------
