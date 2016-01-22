@@ -64,7 +64,7 @@ class HTTPThreadedDownloader(Downloader):
     HTTP, HTTPS and proxied download requests by the server.
     """
 
-    def __init__(self, config, event_listener=None, tries=DEFAULT_TRIES):
+    def __init__(self, config, event_listener=None, tries=DEFAULT_TRIES, session=None):
         """
         :param config: downloader configuration
         :type config: nectar.config.DownloaderConfig
@@ -73,6 +73,10 @@ class HTTPThreadedDownloader(Downloader):
         :param tries: total number of requests made to the remote server,
                       including first unsuccessful one
         :type tries: str
+        :param session: The requests Session to use when downloaded. If one
+                        is not provided, one will be created and used for the
+                        lifetime of this downloader.
+        :type  session: requests.Session
         """
 
         super(HTTPThreadedDownloader, self).__init__(config, event_listener)
@@ -90,6 +94,8 @@ class HTTPThreadedDownloader(Downloader):
 
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
+
+        self.session = session or build_session(config)
 
     @property
     def buffer_size(self):
@@ -111,13 +117,11 @@ class HTTPThreadedDownloader(Downloader):
 
         """
         try:
-            session = build_session(self.config)
             while True:
                 request = queue.get()
                 if request is None or self.is_canceled:
-                    session.close()
                     break
-                self._fetch(request, session)
+                self._fetch(request)
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
             _logger.exception(msg)
@@ -128,6 +132,7 @@ class HTTPThreadedDownloader(Downloader):
     def download(self, request_list):
         worker_threads = []
         queue = WorkerQueue(request_list)
+        self.session = build_session(self.config, self.session)
 
         _logger.debug('starting workers')
         for i in range(self.max_concurrent):
@@ -182,16 +187,14 @@ class HTTPThreadedDownloader(Downloader):
         :return:    download report
         :rtype:     nectar.report.DownloadReport
         """
-        session = build_session(self.config)
-        return self._fetch(request, session)
+        self.session = build_session(self.config, self.session)
+        return self._fetch(request)
 
-    def _fetch(self, request, session):
+    def _fetch(self, request):
         """
         :param request: download request object with details about what to
                         download and where to put it
         :type  request: nectar.request.DownloadRequest
-        :param session: session object used by the requests library
-        :type  session: requests.sessions.Session
 
         :return:    download report
         :rtype:     nectar.report.DownloadReport
@@ -221,9 +224,9 @@ class HTTPThreadedDownloader(Downloader):
                         )
                         _logger.warning(msg)
 
-                    response = session.get(request.url, headers=headers,
-                                           timeout=(self.config.connect_timeout,
-                                                    self.config.read_timeout))
+                    response = self.session.get(request.url, headers=headers,
+                                                timeout=(self.config.connect_timeout,
+                                                         self.config.read_timeout))
 
                     report.headers = response.headers
                     self.fire_download_headers(report)
@@ -382,8 +385,9 @@ class HTTPThreadedDownloader(Downloader):
 # -- requests utilities --------------------------------------------------------
 
 
-def build_session(config):
-    session = requests.Session()
+def build_session(config, session=None):
+    if session is None:
+        session = requests.Session()
     session.stream = True  # required for reading the download in chunks
     _add_basic_auth(session, config)
     _add_ssl(session, config)
