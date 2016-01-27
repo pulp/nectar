@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 HTTP test server for writing tests against an "external" server.
 """
@@ -9,8 +8,6 @@ import socket
 import threading
 from BaseHTTPServer import HTTPServer
 from SimpleHTTPServer import SimpleHTTPRequestHandler
-
-# -- static http test server class ---------------------------------------------
 
 
 class HTTPServerIPV6(HTTPServer):
@@ -35,12 +32,10 @@ class HTTPStaticTestServer(object):
 
     def __init__(self, port=8088):
         self.server = HTTPServerIPV6(('', port), SimpleHTTPRequestHandler)
-        self.server.timeout = 0.1 # timeout after a tenth of a second
+        self.server.timeout = 0.1  # timeout after a tenth of a second
         self._is_running = False
         self._server_thread = None
         _SERVERS.append(self)
-
-    # server loop --------------------------------------------------------------
 
     def _serve(self):
         while self._is_running:
@@ -58,7 +53,6 @@ class HTTPStaticTestServer(object):
         self._server_thread = None
         _SERVERS.remove(self)
 
-# -- atexit cleanup ------------------------------------------------------------
 
 _SERVERS = []
 

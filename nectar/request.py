@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+
 class DownloadRequest(object):
     """
     Representation of a request for a file download.
@@ -42,7 +43,7 @@ class DownloadRequest(object):
         if hasattr(self.destination, 'write'):
             return self.destination
 
-        self._file_handle = open(self.destination, 'wb') # cache the handle
+        self._file_handle = open(self.destination, 'wb')  # cache the handle
         return self._file_handle
 
     def finalize_file_handle(self):
@@ -56,4 +57,3 @@ class DownloadRequest(object):
 
         self._file_handle.close()
         self._file_handle = None
-

@@ -8,12 +8,13 @@ import time
 import eventlet
 eventlet.monkey_patch()
 
+
 def foo():
     print 'start'
     time.sleep(1)
     print 'finish'
 
+
 thread = threading.Thread(target=foo)
 thread.start()
 thread.join()
-

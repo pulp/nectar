@@ -10,19 +10,15 @@ import unittest
 import urllib
 
 import mock
-from requests import Response, Session, ConnectionError, Timeout
+from requests import Response, ConnectionError, Timeout
 
 import base
 import http_static_test_server
-
 from nectar import config, listener, request
 from nectar.config import DownloaderConfig
 from nectar.downloaders import threaded
 from nectar.report import DownloadReport
 from nectar.request import DownloadRequest
-
-
-# -- instantiation tests -------------------------------------------------------
 
 
 class InstantiationTests(base.NectarTests):

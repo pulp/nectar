@@ -56,8 +56,6 @@ class LocalFileDownloader(Downloader):
             method = self._symbolic_link
         return method
 
-    # -- public api ------------------------------------------------------------
-
     def download(self, request_list):
 
         for report in itertools.imap(self.download_method, request_list):
@@ -65,7 +63,7 @@ class LocalFileDownloader(Downloader):
             if report.state == DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
 
-            else: # DOWNLOAD_FAILED
+            else:  # DOWNLOAD_FAILED
                 self.fire_download_failed(report)
 
     def _download_one(self, request):
@@ -80,8 +78,6 @@ class LocalFileDownloader(Downloader):
         :rtype:     nectar.report.DownloadReport
         """
         return self.download_method(request)
-
-    # -- types of downloads ----------------------------------------------------
 
     def _hard_link(self, request, report=None):
         """
@@ -228,8 +224,6 @@ class LocalFileDownloader(Downloader):
 
         return report
 
-    # -- utility functions -----------------------------------------------------
-
     def _file_path_from_url(self, url):
         """
         Strip off the url scheme and return the absolute path to the local file.
@@ -246,4 +240,3 @@ class LocalFileDownloader(Downloader):
             raise ValueError('Unsupported scheme: %s' % scheme)
 
         return file_path
-

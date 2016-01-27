@@ -18,14 +18,12 @@ class DownloaderException(Exception):
     def __init__(self, report):
         self.report = report
 
-# client-side problems ---------------------------------------------------------
 
 class DownloadClientException(DownloaderException):
     """
     Base class for client-side downloader problems.
     """
 
-# specific derived exceptions
 
 class UnsupportedProtocol(DownloadClientException):
     """
@@ -44,14 +42,12 @@ class ReadError(DownloadClientException):
     Raised when the downloader cannot read the response sent by the remote server.
     """
 
-# remote server problems -------------------------------------------------------
 
 class RemoteServerException(DownloaderException):
     """
     Base class for remote server-side downloader problems.
     """
 
-# specific derived exceptions
 
 class FileNotFound(RemoteServerException):
     """
@@ -102,14 +98,12 @@ class RemoteServerError(RemoteServerException):
     Raised when there is an internal remote server error.
     """
 
-# proxy server problems --------------------------------------------------------
 
 class ProxyException(DownloaderException):
     """
     Base class for proxy server problems.
     """
 
-# specific derived exceptions
 
 class ProxyResolutionError(ProxyException):
     """
@@ -130,14 +124,12 @@ class ProxyAuthorizationFailure(ProxyException):
     invalid or missing credentials.
     """
 
-# ssl problems -----------------------------------------------------------------
 
 class SSLException(DownloaderException):
     """
     Base class for SSL problems.
     """
 
-# specific derived exceptions
 
 class ServerSSLVerificationFailure(SSLException):
     """
@@ -149,4 +141,3 @@ class ClientSSLAuthorizationFailure(SSLException):
     """
     Raised when the client's ssl certificate is rejected by the server.
     """
-

@@ -55,7 +55,8 @@ ABRT_FILES = ['abrt-2.1.3.11.g4d5cf.dirty-1.fc18.x86_64.rpm',
               'satyr-1-1.fc18.x86_64.rpm',
               'satyr-debuginfo-1-1.fc18.x86_64.rpm',
               'satyr-devel-1-1.fc18.x86_64.rpm',
-              'satyr-python-1-1.fc18.x86_64.rpm',]
+              'satyr-python-1-1.fc18.x86_64.rpm']
+
 
 def abrt_file_urls():
     return [ABRT_URL + file_name for file_name in ABRT_FILES]
@@ -327,9 +328,9 @@ def epel_6_file_urls():
     return [EPEL_6_URL + file_name for file_name in EPEL_6_FILES]
 
 
-FEDORA_18_ISO = 'http://download.fedoraproject.org/pub/fedora/linux/releases/18/Live/x86_64/Fedora-18-x86_64-Live-Desktop.iso'
+FEDORA_18_ISO = ('http://download.fedoraproject.org/pub/fedora/linux/releases/18/Live/x86_64/'
+                 'Fedora-18-x86_64-Live-Desktop.iso')
 
 
 def fedora_18_iso_url():
     return [FEDORA_18_ISO]
-

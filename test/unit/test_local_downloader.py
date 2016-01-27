@@ -232,7 +232,8 @@ class BadDownloadTests(DownloadTests):
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
-        request = DownloadRequest('http://thiswontwork.com', os.path.join(self.dest_dir, 'doesnt.even.matter'))
+        request = DownloadRequest('http://thiswontwork.com',
+                                  os.path.join(self.dest_dir, 'doesnt.even.matter'))
 
         downloader.download([request])
 
@@ -262,7 +263,8 @@ class BadDownloadTests(DownloadTests):
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
-        request = DownloadRequest('file://i/dont/exist', os.path.join(self.dest_dir, 'doesnt.even.matter'))
+        request = DownloadRequest('file://i/dont/exist',
+                                  os.path.join(self.dest_dir, 'doesnt.even.matter'))
         downloader.download([request])
 
         self.assertEqual(len(listener.succeeded_reports), 0)
@@ -282,7 +284,8 @@ class BadDownloadTests(DownloadTests):
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
-        request = DownloadRequest('file://i/dont/exist', os.path.join(self.dest_dir, 'doesnt.even.matter'))
+        request = DownloadRequest('file://i/dont/exist',
+                                  os.path.join(self.dest_dir, 'doesnt.even.matter'))
         downloader.download([request])
 
         self.assertEqual(len(listener.succeeded_reports), 0)
@@ -311,7 +314,8 @@ class BadDownloadTests(DownloadTests):
         listener = AggregatingEventListener()
         downloader = local.LocalFileDownloader(config, listener)
 
-        request = DownloadRequest('file://root/no', os.path.join(self.dest_dir, 'doesnt.even.matter'))
+        request = DownloadRequest('file://root/no',
+                                  os.path.join(self.dest_dir, 'doesnt.even.matter'))
 
         downloader.download([request])
 
