@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='nectar',
-      version='1.4.3',
+      version='1.4.4',
       url='https://github.com/pulp/nectar',
       description='Performance tuned network download client library',
       license='GPLv2',
