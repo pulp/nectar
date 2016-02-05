@@ -293,9 +293,7 @@ class HTTPThreadedDownloader(Downloader):
             report.download_skipped()
 
         except requests.ConnectionError as e:
-            _logger.warning("Connection Error - {url} could not be reached.".format(
-                url=request.url)
-            )
+            _logger.warning(str(e))
             self.failed_netlocs.add(netloc)
             report.download_connection_error()
 
