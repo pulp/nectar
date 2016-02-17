@@ -3,8 +3,6 @@
 import os
 import tempfile
 
-import requests
-
 
 class DownloaderConfig(object):
     """
@@ -19,7 +17,7 @@ class DownloaderConfig(object):
             ssl_validation=True, proxy_url=None, proxy_port=None, proxy_username=None,
             proxy_password=None, max_speed=None, headers=None, buffer_size=None,
             progress_interval=None, use_hard_links=False, use_sym_links=False,
-            connect_timeout=6.05, read_timeout=27):
+            connect_timeout=6.05, read_timeout=27, working_dir="/tmp"):
         """
         Initialize the DownloaderConfig. All parameters are optional. Not all downloaders use each
         of the configuration items, so for each parameter documented below, the downloaders that
@@ -100,6 +98,9 @@ class DownloaderConfig(object):
                                      send a response after an initial connection has already been
                                      made.
         :type  headers:              dict
+
+        :param working_dir:          Working directory to store the ssl certificates
+        :type working_dir:           str
         """
         self.max_concurrent = max_concurrent
         self.basic_auth_username = basic_auth_username
@@ -124,6 +125,7 @@ class DownloaderConfig(object):
         self._temp_files = []
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
+        self.working_dir = working_dir
 
         # concurrency options
         self._process_concurrency()
@@ -165,7 +167,8 @@ class DownloaderConfig(object):
 
             elif file_arg_value is None:
                 prefix = 'nectar-%s-' % data_arg_name
-                data_arg_os_handle, file_arg_value = tempfile.mkstemp(prefix=prefix)
+                data_arg_os_handle, file_arg_value = tempfile.mkstemp(dir=self.working_dir,
+                                                                      prefix=prefix)
 
                 os.write(data_arg_os_handle, data_arg_value)
                 os.close(data_arg_os_handle)
@@ -206,4 +209,3 @@ class DownloaderConfig(object):
         """
         item = getattr(self, item)
         return item if item is not None else default
-
