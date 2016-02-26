@@ -312,40 +312,11 @@ class TestFetch(unittest.TestCase):
 
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
 
-            expected_log_message = "Connection Error - http://fakeurl/primary.xml " \
-                                   "could not be reached."
+            expected_log_message = "Skipping requests to fakeurl due to repeated " \
+                                   "connection failures: "
             log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
 
             self.assertIn(expected_log_message, log_calls)
-
-    def test_fetch_with_connection_error_badstatusline(self):
-        """
-        Test that the baseurl is tried again if ConnectionError reason BadStatusLine happened.
-        """
-
-        # requests.ConnectionError
-        def connection_error(*args, **kwargs):
-            raise ConnectionError('Connection aborted.', httplib.BadStatusLine("''",))
-
-        with mock.patch('nectar.downloaders.threaded._logger') as mock_logger:
-            URL = 'http://fakeurl/primary.xml'
-            req = DownloadRequest(URL, StringIO())
-            self.session.get.side_effect = connection_error
-
-            self.downloader._fetch(req)
-
-            self.assertEqual(self.session.get.call_count, 2)
-
-            expected_log_msg = ['Attempting to connect to http://fakeurl/primary.xml.',
-                                'Download of http://fakeurl/primary.xml failed. Re-trying.',
-                                'Re-trying http://fakeurl/primary.xml due to remote server '
-                                'connection failure.',
-                                'Download of http://fakeurl/primary.xml failed. Re-trying.',
-                                'Download of http://fakeurl/primary.xml failed and reached '
-                                'maximum retries']
-            log_calls = [mock_call[1][0] for mock_call in mock_logger.mock_calls]
-
-            self.assertEqual(expected_log_msg, log_calls)
 
     def test_fetch_with_timeout(self):
         """
