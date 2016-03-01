@@ -9,6 +9,7 @@ from logging import getLogger
 
 import requests
 from requests_toolbelt.auth.guess import GuessProxyAuth
+from requests.packages.urllib3.util import retry
 
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
@@ -20,7 +21,7 @@ _logger = getLogger(__name__)
 DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192  # bytes
 DEFAULT_PROGRESS_INTERVAL = 5  # seconds
-DEFAULT_TRIES = 2
+DEFAULT_TRIES = 5
 
 ONE_SECOND = datetime.timedelta(seconds=1)
 
@@ -47,14 +48,6 @@ class SkipLocation(Exception):
     pass
 
 
-class RetryError(Exception):
-    def __init__(self, url):
-        super(RetryError, self).__init__(url)
-
-    def __str__(self):
-        return 'Download of %s failed and reached maximum retries' % self.args[0]
-
-
 # -- downloader class ----------------------------------------------------------
 
 
@@ -72,7 +65,7 @@ class HTTPThreadedDownloader(Downloader):
         :type event_listener: nectar.listener.DownloadEventListener
         :param tries: total number of requests made to the remote server,
                       including first unsuccessful one
-        :type tries: str
+        :type tries: int
         :param session: The requests Session to use when downloaded. If one
                         is not provided, one will be created and used for the
                         lifetime of this downloader.
@@ -96,6 +89,14 @@ class HTTPThreadedDownloader(Downloader):
         self.failed_netlocs = set([])
 
         self.session = session or build_session(config)
+
+        # Configure an adapter to retry failed requests. See urllib3's documentation
+        # for details on each argument.
+        retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1)
+        retry_conf.BACKOFF_MAX = 8
+        adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
 
     @property
     def buffer_size(self):
@@ -215,31 +216,11 @@ class HTTPThreadedDownloader(Downloader):
                 raise SkipLocation()
 
             _logger.debug("Attempting to connect to {url}.".format(url=request.url))
-
-            for attempt in xrange(self.tries):
-                try:
-                    if attempt > 0:
-                        msg = _("Re-trying {url} due to remote server connection failure.".format(
-                            url=request.url)
-                        )
-                        _logger.warning(msg)
-
-                    response = self.session.get(request.url, headers=headers,
-                                                timeout=(self.config.connect_timeout,
-                                                         self.config.read_timeout))
-
-                    report.headers = response.headers
-                    self.fire_download_headers(report)
-
-                    break
-                except requests.ConnectionError as e:
-                    if isinstance(e.strerror, httplib.BadStatusLine):
-                        msg = _("Download of {url} failed. Re-trying.".format(url=request.url))
-                        _logger.warning(msg)
-                        continue
-                    raise
-            else:
-                raise RetryError(request.url)
+            response = self.session.get(request.url, headers=headers,
+                                        timeout=(self.config.connect_timeout,
+                                                 self.config.read_timeout))
+            report.headers = response.headers
+            self.fire_download_headers(report)
 
             if response.status_code != httplib.OK:
                 raise DownloadFailed(request.url, response.status_code, response.reason)
@@ -293,12 +274,8 @@ class HTTPThreadedDownloader(Downloader):
             report.download_skipped()
 
         except requests.ConnectionError as e:
-            _logger.warning(str(e))
-            self.failed_netlocs.add(netloc)
-            report.download_connection_error()
-
-        except RetryError as e:
-            _logger.warning(str(e))
+            _logger.warning(_('Skipping requests to {netloc} due to repeated connection'
+                              ' failures: {e}').format(netloc=netloc, e=str(e)))
             self.failed_netlocs.add(netloc)
             report.download_connection_error()
 
