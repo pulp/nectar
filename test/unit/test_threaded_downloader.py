@@ -70,10 +70,14 @@ class InstantiationTests(base.NectarTests):
                          (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
         # test proxy username and passwod are url encoded before sending the request
         self.assertEqual(session.proxies,
-                         {'http': 'https://%s:%d' % (proxy_host,
-                                                     kwargs['proxy_port']),
-                          'https': 'https://%s:%d' % (proxy_host,
-                                                      kwargs['proxy_port'])})
+                         {'http': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
+                                                           urllib.quote(kwargs['proxy_password']),
+                                                           proxy_host,
+                                                           kwargs['proxy_port']),
+                          'https': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
+                                                            urllib.quote(kwargs['proxy_password']),
+                                                            proxy_host,
+                                                            kwargs['proxy_port'])})
 
 
 # -- "live" tests --------------------------------------------------------------
