@@ -27,5 +27,4 @@ setup(name='nectar',
                'sdist': {'dist_dir': '_dist'}},
 
       install_requires=['isodate >= 0.4.9',
-                        'requests >= 2.0.0',
-                        'requests-toolbelt >= 0.6.0'],)
+                        'requests >= 2.0.0'],)

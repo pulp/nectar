@@ -3,6 +3,8 @@
 import os
 import tempfile
 
+import requests.auth
+
 
 class DownloaderConfig(object):
     """
@@ -209,3 +211,37 @@ class DownloaderConfig(object):
         """
         item = getattr(self, item)
         return item if item is not None else default
+
+
+class HTTPBasicWithProxyAuth(requests.auth.AuthBase):
+    """
+    Attaches HTTP Basic Authentication and Proxy Authentication to the Request objects in a session.
+    """
+    def __init__(self, username, password, proxy_username, proxy_password):
+        """
+        :param username: username to be used to authenticate with the download server
+        :type username: basestring
+        :param password: password to be used to authenticate with the download server
+        :type password: basestring
+        :param proxy_username: username to be used to authenticate with the proxy server
+        :type proxy_username: basestring
+        :param proxy_password: password to be used to authenticate with the proxy server
+        :type proxy_password: basestring
+        """
+        self.username = username
+        self.password = password
+        self.proxy_username = proxy_username
+        self.proxy_password = proxy_password
+
+    def __call__(self, req):
+        """
+        Callable to be used by the requests library to populate the header of a download request.
+
+        :param req: download request object used by the requests library
+        :type  req: requests.models.Request
+        """
+        req.headers['Authorization'] = requests.auth._basic_auth_str(self.username, self.password)
+        req.headers['Proxy-Authorization'] = requests.auth._basic_auth_str(self.proxy_username,
+                                                                           self.proxy_password)
+        return req
+

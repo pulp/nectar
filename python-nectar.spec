@@ -17,7 +17,6 @@ BuildRequires:  python-setuptools
 
 Requires:       python-isodate >= 0.4.9
 Requires:       python-requests >= 2.4.3
-Requires:       python-requests-toolbelt >= 0.6.0
 
 %description
 Nectar is a download library that abstracts the workflow of making and tracking
