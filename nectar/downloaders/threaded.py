@@ -399,7 +399,7 @@ def _add_proxy(session, config):
     host, remainder = urllib.splithost(remainder)
     url = ':'.join((host, str(config.proxy_port)))
 
-    if config.proxy_username is not None:
+    if config.proxy_username:
         password_part = config.get('proxy_password', '') and ':%s' % config.proxy_password
         auth = config.proxy_username + password_part
         auth = urllib.quote(auth, safe=':')
