@@ -79,6 +79,32 @@ class InstantiationTests(base.NectarTests):
                                                             proxy_host,
                                                             kwargs['proxy_port'])})
 
+    def test_empty_string_proxy_username(self):
+        """
+        Yoram Hekma submitted a patch[0] that ensured that an empty string in the proxy username
+        would not count as the user supplying a username. This test ensures that behavior is tested.
+
+        [0] https://github.com/pulp/nectar/pull/47
+        """
+        kwargs = {'proxy_url': 'https://invalid-proxy.com',
+                  'proxy_port': 1234,
+                  'proxy_username': '',
+                  'proxy_password': ''}
+        proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
+
+        cfg = config.DownloaderConfig(**kwargs)
+        session = threaded.build_session(cfg)
+
+        self.assertEqual(session.stream, True)
+        self.assertFalse(hasattr(session.auth, 'proxy_username'))
+        self.assertFalse(hasattr(session.auth, 'proxy_password'))
+
+        # Since the user provided the empty string for the proxy username, the username and password
+        # should be missing in the session proxies.
+        self.assertEqual(session.proxies,
+                         {'http': 'https://%s:%d' % (proxy_host, kwargs['proxy_port']),
+                          'https': 'https://%s:%d' % (proxy_host, kwargs['proxy_port'])})
+
 
 # -- "live" tests --------------------------------------------------------------
 
