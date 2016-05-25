@@ -274,8 +274,8 @@ class HTTPThreadedDownloader(Downloader):
             report.download_skipped()
 
         except requests.ConnectionError as e:
-            _logger.warning(_('Skipping requests to {netloc} due to repeated connection'
-                              ' failures: {e}').format(netloc=netloc, e=str(e)))
+            _logger.error(_('Skipping requests to {netloc} due to repeated connection'
+                            ' failures: {e}').format(netloc=netloc, e=str(e)))
             self.failed_netlocs.add(netloc)
             report.download_connection_error()
 
