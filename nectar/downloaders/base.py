@@ -143,5 +143,5 @@ class Downloader(object):
         try:
             if self.fire_events:
                 event_listener_callback(*args, **kwargs)
-        except Exception, e:
+        except Exception as e:
             _LOG.exception(e)

@@ -10,9 +10,9 @@ eventlet.monkey_patch()
 
 
 def foo():
-    print 'start'
+    print('start')
     time.sleep(1)
-    print 'finish'
+    print('finish')
 
 
 thread = threading.Thread(target=foo)

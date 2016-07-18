@@ -1,9 +1,11 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from %distutils.sysconfig import get_python_lib; print get_python_lib()")}
+%{!?python3_sitelib: %global python3_sitelib %(%{__python3} -c "from %distutils.sysconfig import get_python_lib; print(get_python_lib())")}
+%global sum A download library that separates workflow from implementation details
 
 Name:           python-nectar
 Version:        1.5.2
 Release:        1%{?dist}
-Summary:        A download library that separates workflow from implementation details
+Summary:        %{sum}
 
 Group:          Development/Tools
 License:        GPLv2
@@ -14,9 +16,8 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 
 BuildRequires:  python-setuptools
+BuildRequires:  python3-setuptools
 
-Requires:       python-isodate >= 0.4.9
-Requires:       python-requests >= 2.4.3
 
 %description
 Nectar is a download library that abstracts the workflow of making and tracking
@@ -26,22 +27,41 @@ such as the default "threaded" downloader, which uses the "requests" library
 with multiple threads. Other experimental downloaders have used tools like
 pycurl and eventlets.
 
+%package -n python2-nectar
+Summary:        %{sum}
+Requires:       python-isodate >= 0.4.9
+Requires:       python-requests >= 2.4.3
+%description -n python2-nectar
+
+%package -n python3-nectar
+Summary:        %{sum}
+Requires:       python3-isodate >= 0.4.9
+Requires:       python3-requests >= 2.4.3
+%description -n python3-nectar
+
 %prep
 %setup -q
 
 %build
-%{__python} setup.py build
+%py2_build
+%py3_build
 
 %install
 rm -rf $RPM_BUILD_ROOT
 %{__python} setup.py install -O1 --skip-build --root %{buildroot}
+%{__python3} setup.py install -O1 --skip-build --root %{buildroot}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%files
+%files -n python2-nectar
 %{python_sitelib}/nectar/
 %{python_sitelib}/nectar*.egg-info
+%doc COPYRIGHT LICENSE.txt README.rst
+
+%files -n python3-nectar
+%{python3_sitelib}/nectar/
+%{python3_sitelib}/nectar*.egg-info
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog

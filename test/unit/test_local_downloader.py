@@ -30,7 +30,7 @@ class InstantiationTests(base.NectarTests):
         try:
             local.LocalFileDownloader(config)
 
-        except Exception, e:
+        except Exception as e:
             self.fail(str(e))
 
     def test_progress_interval(self):

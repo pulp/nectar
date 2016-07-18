@@ -18,7 +18,7 @@ class InstantiationTests(base.NectarTests):
     def test_empty_instantiation(self):
         try:
             DownloaderConfig()
-        except Exception, e:
+        except Exception as e:
             self.fail(str(e))
 
     def test_default_configuration_values(self):

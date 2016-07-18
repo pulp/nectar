@@ -8,7 +8,9 @@ import urllib
 
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
-
+import sys
+if sys.version_info.major == 3:
+    basestring = str
 
 logger = logging.getLogger(__name__)
 DEFAULT_BUFFER_SIZE = 1048576  # 1 MB in bytes
@@ -157,11 +159,11 @@ class LocalFileDownloader(Downloader):
                 self.fire_download_progress(report)
                 last_progress_update = now
 
-        except IOError, e:
+        except IOError as e:
             logger.debug(e)
             report.error_msg = str(e)
             report.download_failed()
-        except Exception, e:
+        except Exception as e:
             logger.exception(e)
             report.error_msg = str(e)
             report.download_failed()
@@ -210,11 +212,11 @@ class LocalFileDownloader(Downloader):
 
             report.bytes_downloaded = os.path.getsize(request.destination)
 
-        except OSError, e:
+        except OSError as e:
             logger.debug(e)
             report.error_msg = str(e)
             report.download_failed()
-        except Exception, e:
+        except Exception as e:
             logger.exception(e)
             report.error_msg = str(e)
             report.download_failed()
