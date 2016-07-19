@@ -1,8 +1,9 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from %distutils.sysconfig import get_python_lib; print get_python_lib()")}
 %{!?python3_sitelib: %global python3_sitelib %(%{__python3} -c "from %distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %global sum A download library that separates workflow from implementation details
+%global modname nectar
 
-Name:           python-nectar
+Name:           python-%{modname}
 Version:        1.5.2
 Release:        1%{?dist}
 Summary:        %{sum}
@@ -15,7 +16,7 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
 
-BuildRequires:  python-setuptools
+BuildRequires:  python2-setuptools
 BuildRequires:  python3-setuptools
 
 
@@ -27,17 +28,17 @@ such as the default "threaded" downloader, which uses the "requests" library
 with multiple threads. Other experimental downloaders have used tools like
 pycurl and eventlets.
 
-%package -n python2-nectar
+%package -n python2-%{modname}
 Summary:        %{sum}
 Requires:       python-isodate >= 0.4.9
 Requires:       python-requests >= 2.4.3
-%description -n python2-nectar
+%description -n python2-%{modname}
 
-%package -n python3-nectar
+%package -n python3-%{modname}
 Summary:        %{sum}
 Requires:       python3-isodate >= 0.4.9
 Requires:       python3-requests >= 2.4.3
-%description -n python3-nectar
+%description -n python3-%{modname}
 
 %prep
 %setup -q
@@ -54,15 +55,17 @@ rm -rf $RPM_BUILD_ROOT
 %clean
 rm -rf $RPM_BUILD_ROOT
 
-%files -n python2-nectar
+%files -n python2-%{modname}
 %{python_sitelib}/nectar/
 %{python_sitelib}/nectar*.egg-info
-%doc COPYRIGHT LICENSE.txt README.rst
+%doc COPYRIGHT README.rst
+%license LICENSE.txt
 
-%files -n python3-nectar
+%files -n python3-%{modname}
 %{python3_sitelib}/nectar/
 %{python3_sitelib}/nectar*.egg-info
-%doc COPYRIGHT LICENSE.txt README.rst
+%doc COPYRIGHT README.rst
+%license LICENSE.txt
 
 %changelog
 * Wed May 25 2016 Ina Panova <ipanova@redhat.com> 1.5.2-1

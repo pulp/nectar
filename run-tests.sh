@@ -9,6 +9,6 @@ PACKAGES="nectar"
 # Test Directories
 TESTS="test/unit"
 
-flake8 --config flake8.cfg .
+python3-flake8 --config flake8.cfg .
 
-nosetests --with-coverage --cover-html --cover-erase --cover-package $PACKAGES $TESTS
+nosetests-3.5 --with-coverage --cover-html --cover-erase --cover-package $PACKAGES $TESTS

@@ -6,8 +6,12 @@ HTTP test server for writing tests against an "external" server.
 import atexit
 import socket
 import threading
-from BaseHTTPServer import HTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+import sys
+if sys.version_info.major == 3:
+    from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
+else:
+    from BaseHTTPServer import HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 
 class HTTPServerIPV6(HTTPServer):
