@@ -6,7 +6,7 @@ class DownloadRequest(object):
     Representation of a request for a file download.
     """
 
-    def __init__(self, url, destination, data=None, headers=None):
+    def __init__(self, url, destination, data=None, headers=None, requests_kw=None):
         """
         :param url:         url of the file to be downloaded
         :type  url:         str
@@ -23,6 +23,9 @@ class DownloadRequest(object):
                             will override any headers of the same key that
                             are specified in the config.
         :type  headers:     dict
+        :param requests_kw: A dictionary of keyword arguments to pass to requests when performing
+                            the ``requests.get`` call.
+        :type  requests_kw: dict
         """
 
         self.url = url
@@ -30,6 +33,7 @@ class DownloadRequest(object):
         self.data = data
         self.headers = headers
         self.canceled = False
+        self.requests_kw = requests_kw or {}
 
         self._file_handle = None
 

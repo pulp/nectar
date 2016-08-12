@@ -218,7 +218,8 @@ class HTTPThreadedDownloader(Downloader):
             _logger.debug("Attempting to connect to {url}.".format(url=request.url))
             response = self.session.get(request.url, headers=headers,
                                         timeout=(self.config.connect_timeout,
-                                                 self.config.read_timeout))
+                                                 self.config.read_timeout),
+                                        **request.requests_kw)
             report.headers = response.headers
             self.fire_download_headers(report)
 
