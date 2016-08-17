@@ -8,7 +8,7 @@ from gettext import gettext as _
 from logging import getLogger
 
 import requests
-from requests.packages.urllib3.util import retry
+from requests.packages.urllib3.util import retry, url as urllib3_url
 
 from nectar.config import HTTPBasicWithProxyAuth
 from nectar.downloaders.base import Downloader
@@ -88,15 +88,16 @@ class HTTPThreadedDownloader(Downloader):
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
 
-        self.session = session or build_session(config)
+        if not session:
+            session = requests.Session()
+            retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1)
+            retry_conf.BACKOFF_MAX = 8
+            adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
+            session.mount('http://', adapter)
+            session.mount('https://', adapter)
 
-        # Configure an adapter to retry failed requests. See urllib3's documentation
-        # for details on each argument.
-        retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1)
-        retry_conf.BACKOFF_MAX = 8
-        adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
-        self.session.mount('http://', adapter)
-        self.session.mount('https://', adapter)
+        self.session = session
+        self.session.stream = True
 
     @property
     def buffer_size(self):
@@ -110,6 +111,56 @@ class HTTPThreadedDownloader(Downloader):
     def progress_interval(self):
         seconds = self.config.progress_interval or DEFAULT_PROGRESS_INTERVAL
         return datetime.timedelta(seconds=seconds)
+
+    @staticmethod
+    def requests_kwargs_from_nectar_config(config):
+        """
+        Take a Nectar configuration and map it to a set of requests keyword arguments.
+
+        These keyword arguments can be used with the Python requests ``requests.request``
+        API. In the future when Nectar is just a memory, this can be adapted to map a
+        Pulp importer configuration to requests kwargs.
+
+        :param config: A nectar configuration instance
+        :type  config: nectar.config.DownloaderConfig
+
+        :return: A dictionary of keyword arguments for the requests API.
+        :rtype:  dict
+        """
+        requests_kwargs = {}
+
+        # Configure basic authentication
+        if config.basic_auth_username and config.basic_auth_password:
+            requests_kwargs['auth'] = (config.basic_auth_username, config.basic_auth_password)
+
+        # Configure verification of the server's TLS certificates; defaults to the system trust store.
+        if config.ssl_validation is not False:
+            if config.ssl_ca_cert_path:
+                requests_kwargs['verify'] = config.ssl_ca_cert_path
+            else:
+                requests_kwargs['verify'] = True
+        else:
+            requests_kwargs['verify'] = False
+
+        # Configure client-side certificate authentication
+        if config.ssl_client_cert_path and config.ssl_client_key_path:
+            requests_kwargs['cert'] = (config.ssl_client_cert_path, config.ssl_client_key_path)
+
+        # Configure proxy servers and proxy authentication.
+        #
+        # Annoyingly, although the config is called 'proxy_url', the port and basic auth
+        # credentials are defined separately, so we have to build the url.
+        if config.proxy_url and config.proxy_port:
+            parsed_url = urllib3_url.parse_url(config.proxy_url)
+            proxy_auth = None
+            if config.proxy_username and config.proxy_password:
+                proxy_auth = '{user}:{password}'.format(user=config.proxy_username,
+                                                        password=config.proxy_password)
+            parsed_url = urllib3_url.Url(scheme=parsed_url.scheme, auth=proxy_auth,
+                                         host=parsed_url.host, port=config.proxy_port)
+            requests_kwargs['proxies'] = {'http': parsed_url.url, 'https': parsed_url.url}
+
+        return requests_kwargs
 
     def worker(self, queue):
         """
@@ -133,7 +184,6 @@ class HTTPThreadedDownloader(Downloader):
     def download(self, request_list):
         worker_threads = []
         queue = WorkerQueue(request_list)
-        self.session = build_session(self.config, self.session)
 
         _logger.debug('starting workers')
         for i in range(self.max_concurrent):
@@ -188,7 +238,6 @@ class HTTPThreadedDownloader(Downloader):
         :return:    download report
         :rtype:     nectar.report.DownloadReport
         """
-        self.session = build_session(self.config, self.session)
         return self._fetch(request)
 
     def _fetch(self, request):
@@ -216,9 +265,11 @@ class HTTPThreadedDownloader(Downloader):
                 raise SkipLocation()
 
             _logger.debug("Attempting to connect to {url}.".format(url=request.url))
+            requests_kwargs = self.requests_kwargs_from_nectar_config(self.config)
             response = self.session.get(request.url, headers=headers,
                                         timeout=(self.config.connect_timeout,
-                                                 self.config.read_timeout))
+                                                 self.config.read_timeout),
+                                        **requests_kwargs)
             report.headers = response.headers
             self.fire_download_headers(report)
 
@@ -361,6 +412,7 @@ class HTTPThreadedDownloader(Downloader):
 
 
 def build_session(config, session=None):
+    """This method is deprecated: it is not thread-safe."""
     if session is None:
         session = requests.Session()
     session.stream = True  # required for reading the download in chunks

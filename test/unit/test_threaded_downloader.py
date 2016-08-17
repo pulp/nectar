@@ -39,6 +39,76 @@ class InstantiationTests(base.NectarTests):
         self.assertEqual(downloader.progress_interval,
                          datetime.timedelta(seconds=threaded.DEFAULT_PROGRESS_INTERVAL))
 
+    @mock.patch('nectar.config.DownloaderConfig._process_ssl_settings', mock.Mock())
+    def test_requests_kwargs_from_config(self):
+        """Assert that a Nectar config is translated to a requests config correctly."""
+        nectar_config = DownloaderConfig(
+            ssl_ca_cert_path='/tmp/CA.pem',
+            ssl_client_cert_path='/tmp/cert.pem',
+            ssl_client_key_path='/tmp/key.pem',
+        )
+        expected_kwargs = {'verify': '/tmp/CA.pem', 'cert': ('/tmp/cert.pem', '/tmp/key.pem')}
+
+        actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
+        self.assertEqual(expected_kwargs, actual)
+
+    def test_requests_kwargs_defaults_secure(self):
+        """
+        Test that requests_kwargs_from_nectar_config creates a `proxies` kwarg
+        and handles a missing password properly.
+        """
+        nectar_config = DownloaderConfig()
+        expected_kwargs = {'verify': True}
+
+        actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
+        self.assertEqual(expected_kwargs, actual)
+
+    def test_requests_kwargs_basic_auth(self):
+        """
+        Test that requests_kwargs_from_nectar_config creates an `auth` kwarg for basic auth.
+        """
+        nectar_config = DownloaderConfig(basic_auth_username='test', basic_auth_password='hunter2')
+        expected_kwargs = {'verify': True, 'auth': ('test', 'hunter2')}
+
+        actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
+        self.assertEqual(expected_kwargs, actual)
+
+    def test_requests_kwargs_proxy(self):
+        """
+        Test that requests_kwargs_from_nectar_config creates a `proxies` kwarg.
+        """
+        nectar_config = DownloaderConfig(proxy_url='http://proxy.example.com', proxy_port=3128)
+        expected_kwargs = {
+            'verify': True,
+            'proxies': {
+                'http': 'http://proxy.example.com:3128',
+                'https': 'http://proxy.example.com:3128',
+            }
+        }
+
+        actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
+        self.assertEqual(expected_kwargs, actual)
+
+    def test_requests_kwargs_basic_auth_proxy(self):
+        """
+        Test that requests_kwargs_from_nectar_config creates a `proxies` kwarg
+        with basic auth credentials.
+        """
+        nectar_config = DownloaderConfig(basic_auth_username='test', basic_auth_password='hunter2',
+                                         proxy_url='http://proxy.example.com', proxy_port=3128,
+                                         proxy_username='proxy_user', proxy_password='test@123')
+        expected_kwargs = {
+            'verify': True,
+            'auth': ('test', 'hunter2'),
+            'proxies': {
+                'http': 'http://proxy_user:test@123@proxy.example.com:3128',
+                'https': 'http://proxy_user:test@123@proxy.example.com:3128',
+            }
+        }
+
+        actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
+        self.assertEqual(expected_kwargs, actual)
+
     def test_configure_session(self):
         kwargs = {'basic_auth_username': 'admin',
                   'basic_auth_password': 'admin',
@@ -255,7 +325,8 @@ class TestFetch(unittest.TestCase):
         self.session.get.assert_called_once_with(
             URL,
             headers={'pulp_header': 'awesome!'},
-            timeout=(self.config.connect_timeout, self.config.read_timeout)
+            timeout=(self.config.connect_timeout, self.config.read_timeout),
+            verify=True,
         )
 
     @mock.patch('nectar.downloaders.threaded.DownloadReport.from_download_request')
@@ -298,7 +369,8 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(report.bytes_downloaded, 3)
         self.session.get.assert_called_once_with(URL, headers={'accept-encoding': ''},
                                                  timeout=(self.config.connect_timeout,
-                                                          self.config.read_timeout))
+                                                          self.config.read_timeout),
+                                                 verify=True)
 
     def test_normal_content_encoding(self):
         URL = 'http://fakeurl/primary.xml'
@@ -315,7 +387,7 @@ class TestFetch(unittest.TestCase):
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
         self.session.get.assert_called_once_with(
-            URL, headers={}, timeout=(self.config.connect_timeout, self.config.read_timeout))
+            URL, headers={}, timeout=(self.config.connect_timeout, self.config.read_timeout), verify=True)
 
     def test_fetch_with_connection_error(self):
         """
