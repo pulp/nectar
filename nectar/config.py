@@ -5,7 +5,7 @@ import tempfile
 
 import requests.auth
 
-
+temp_files = []
 class DownloaderConfig(object):
     """
     Downloader configuration class that represents the type of download backend,
@@ -124,7 +124,6 @@ class DownloaderConfig(object):
         self.progress_interval = progress_interval
         self.use_hard_links = use_hard_links
         self.use_sym_links = use_sym_links
-        self._temp_files = []
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
         self.working_dir = working_dir
@@ -172,10 +171,9 @@ class DownloaderConfig(object):
                 data_arg_os_handle, file_arg_value = tempfile.mkstemp(dir=self.working_dir,
                                                                       prefix=prefix)
 
-                os.write(data_arg_os_handle, data_arg_value)
+                os.write(data_arg_os_handle, data_arg_value.encode('utf-8'))
                 os.close(data_arg_os_handle)
-
-                self._temp_files.append(file_arg_value)
+                temp_files.append(file_arg_value)
                 setattr(self, file_arg_name, file_arg_value)
 
             else:
@@ -193,7 +191,8 @@ class DownloaderConfig(object):
         finished with the configuration instance. It is *not* called by the
         downloaders themselves.
         """
-        for file_name in self._temp_files:
+        print(temp_files)
+        for file_name in temp_files:
             if not os.path.exists(file_name):
                 continue
             os.unlink(file_name)

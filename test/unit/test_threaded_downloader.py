@@ -1,13 +1,20 @@
-from cStringIO import StringIO
+import sys
+if sys.version_info.major == 3:
+    from io import StringIO
+    import http.client as httplib
+    from urllib.parse import urlparse, quote
+else:
+    from cStringIO import StringIO
+    import httplib
+    from urllib import quote
+import urllib
 import datetime
-import httplib
 import os
 import random
 import shutil
 import string
 import tempfile
 import unittest
-import urllib
 
 import mock
 from requests import Response, ConnectionError, Timeout
@@ -121,7 +128,11 @@ class InstantiationTests(base.NectarTests):
                   'proxy_port': 1234,
                   'proxy_username': 'anon?ymous',
                   'proxy_password': 'anonymous$'}
-        proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
+        if sys.version_info.major == 3:
+            parsed_url = urlparse(kwargs['proxy_url'])
+            proxy_host = parsed_url.hostname
+        else:
+            proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
 
         cfg = config.DownloaderConfig(**kwargs)
         session = threaded.build_session(cfg)
@@ -140,12 +151,12 @@ class InstantiationTests(base.NectarTests):
                          (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
         # test proxy username and passwod are url encoded before sending the request
         self.assertEqual(session.proxies,
-                         {'http': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
-                                                           urllib.quote(kwargs['proxy_password']),
+                         {'http': 'https://%s:%s@%s:%d' % (quote(kwargs['proxy_username']),
+                                                           quote(kwargs['proxy_password']),
                                                            proxy_host,
                                                            kwargs['proxy_port']),
-                          'https': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
-                                                            urllib.quote(kwargs['proxy_password']),
+                          'https': 'https://%s:%s@%s:%d' % (quote(kwargs['proxy_username']),
+                                                            quote(kwargs['proxy_password']),
                                                             proxy_host,
                                                             kwargs['proxy_port'])})
 
@@ -160,7 +171,18 @@ class InstantiationTests(base.NectarTests):
                   'proxy_port': 1234,
                   'proxy_username': '',
                   'proxy_password': ''}
-        proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
+        """
+        urllib.splittype("https://invalid-proxy.com")
+        ('https', '//invalid-proxy.com')
+        urllib.splithost(urllib.splittype("https://invalid-proxy.com")[1])
+        ('invalid-proxy.com', '')
+
+        """
+        if sys.version_info.major == 3:
+            parsed_url = urlparse(kwargs['proxy_url'])
+            proxy_host = parsed_url.hostname
+        else:
+            proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
 
         cfg = config.DownloaderConfig(**kwargs)
         session = threaded.build_session(cfg)

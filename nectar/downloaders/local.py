@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import datetime
-import itertools
 import logging
 import os
 import urllib
 
 from nectar.downloaders.base import Downloader
 from nectar.report import DownloadReport, DOWNLOAD_SUCCEEDED
-
+import sys
+if sys.version_info.major == 3:
+    from urllib.parse import urlparse
+    basestring = str
 
 logger = logging.getLogger(__name__)
 DEFAULT_BUFFER_SIZE = 1048576  # 1 MB in bytes
@@ -58,7 +60,7 @@ class LocalFileDownloader(Downloader):
 
     def download(self, request_list):
 
-        for report in itertools.imap(self.download_method, request_list):
+        for report in list(map(self.download_method, request_list)):
 
             if report.state == DOWNLOAD_SUCCEEDED:
                 self.fire_download_succeeded(report)
@@ -157,11 +159,11 @@ class LocalFileDownloader(Downloader):
                 self.fire_download_progress(report)
                 last_progress_update = now
 
-        except IOError, e:
+        except IOError as e:
             logger.debug(e)
             report.error_msg = str(e)
             report.download_failed()
-        except Exception, e:
+        except Exception as e:
             logger.exception(e)
             report.error_msg = str(e)
             report.download_failed()
@@ -210,11 +212,11 @@ class LocalFileDownloader(Downloader):
 
             report.bytes_downloaded = os.path.getsize(request.destination)
 
-        except OSError, e:
+        except OSError as e:
             logger.debug(e)
             report.error_msg = str(e)
             report.download_failed()
-        except Exception, e:
+        except Exception as e:
             logger.exception(e)
             report.error_msg = str(e)
             report.download_failed()
@@ -234,7 +236,12 @@ class LocalFileDownloader(Downloader):
         :rtype: str
         :raises ValueError: if the URL is not for a local file
         """
-        scheme, file_path = urllib.splittype(url)
+        if sys.version_info.major == 3:
+            parsed_url = urlparse(url)
+            scheme = parsed_url.scheme
+            file_path = parsed_url.path
+        else:
+            scheme, file_path = urllib.splittype(url)
 
         if not scheme.startswith('file'):
             raise ValueError('Unsupported scheme: %s' % scheme)

@@ -4,9 +4,16 @@ import datetime
 import os
 import shutil
 import tempfile
-from StringIO import StringIO
+import sys
+if sys.version_info.major == 3:
+    from io import StringIO
+    builtin_name = 'builtins.open'
+    from unittest.mock import patch
+else:
+    from cStringIO import StringIO
+    builtin_name = '__builtin__.open'
+    from mock import patch
 import unittest
-
 import mock
 
 from nectar.config import DownloaderConfig
@@ -30,7 +37,7 @@ class InstantiationTests(base.NectarTests):
         try:
             local.LocalFileDownloader(config)
 
-        except Exception, e:
+        except Exception as e:
             self.fail(str(e))
 
     def test_progress_interval(self):
@@ -74,6 +81,7 @@ class DownloadTests(base.NectarTests):
 
     def setUp(self):
         super(DownloadTests, self).setUp()
+        print("\t\nSETUP\t\n")
         self.dest_dir = tempfile.mkdtemp(prefix='nectar-local-testing-', dir='.')
 
     def tearDown(self):
@@ -100,8 +108,14 @@ class GoodDownloadTests(DownloadTests):
 
         downloader._hard_link(request_list[0])
 
-        src_stat = os.stat(os.path.join(DATA_DIR, DATA_FILES[0]))
-        dst_stat = os.stat(request_list[0].destination)
+        cor_path = os.path.join(DATA_DIR, DATA_FILES[0])
+        print("cor_path:")
+        print(cor_path)
+        src_stat = os.stat(cor_path)
+        cor_dst = request_list[0].destination
+        print("cor_dst:")
+        print(cor_dst)
+        dst_stat = os.stat(cor_dst)
 
         self.assertEqual(src_stat.st_ino, dst_stat.st_ino)
         self.assertEqual(src_stat.st_nlink, 2)
@@ -143,7 +157,7 @@ class GoodDownloadTests(DownloadTests):
 
         self.assertTrue(os.path.islink(request_list[0].destination))
 
-    @mock.patch('nectar.report.DownloadReport.download_canceled')
+    @patch('nectar.report.DownloadReport.download_canceled')
     def test_common_link_canceled(self, mock_canceled):
         downloader = local.LocalFileDownloader(DownloaderConfig())
         downloader.cancel()
@@ -167,8 +181,8 @@ class GoodDownloadTests(DownloadTests):
         self.assertEqual(src_stat.st_size, dst_stat.st_size)
         self.assertNotEqual(src_stat.st_ino, dst_stat.st_ino)
 
-    @mock.patch('__builtin__.open')
-    @mock.patch('nectar.report.DownloadReport.download_canceled')
+    @patch(builtin_name)
+    @patch('nectar.report.DownloadReport.download_canceled')
     def test_copy_canceled(self, mock_canceled, mock_open):
         downloader = local.LocalFileDownloader(DownloaderConfig())
         downloader.cancel()
@@ -181,8 +195,8 @@ class GoodDownloadTests(DownloadTests):
         # make sure the no writing was attempted
         self.assertEqual(mock_open.return_value.write.call_count, 0)
 
-    @mock.patch('__builtin__.open')
-    @mock.patch('nectar.report.DownloadReport.download_canceled')
+    @patch(builtin_name)
+    @patch('nectar.report.DownloadReport.download_canceled')
     def test_copy_canceled_single_request(self, mock_canceled, mock_open):
         downloader = local.LocalFileDownloader(DownloaderConfig())
         request = DownloadRequest('file://' + __file__, '/bar')
@@ -253,7 +267,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
-    @mock.patch('nectar.downloaders.local.logger')
+    @patch('nectar.downloaders.local.logger')
     def test__copy_when_source_not_found(self, mock_logger):
         """
         Test that nectar properly handles an attempt to copy local files
@@ -274,8 +288,7 @@ class BadDownloadTests(DownloadTests):
         self.assertTrue('No such file or directory' in debug_messages)
         self.assertEqual(mock_logger.exception.call_count, 0)
 
-    @mock.patch('nectar.downloaders.local.logger')
-    def test__common_link_when_source_not_found(self, mock_logger):
+    def test__common_link_when_source_not_found(self):
         """
         Test that nectar properly handles an attempt to link local files
         that do not exist.
@@ -291,9 +304,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
-        debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
-        self.assertTrue('No such file or directory' in debug_messages)
-        self.assertEqual(mock_logger.exception.call_count, 0)
+        self.assertTrue('No such file or directory' in listener.failed_reports[0].error_msg)
 
     def test_destination_not_found(self):
 
