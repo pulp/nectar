@@ -1,3 +1,4 @@
+from builtins import str
 # -*- coding: utf-8 -*-
 
 import os
@@ -18,7 +19,7 @@ class InstantiationTests(base.NectarTests):
     def test_empty_instantiation(self):
         try:
             DownloaderConfig()
-        except Exception, e:
+        except Exception as e:
             self.fail(str(e))
 
     def test_default_configuration_values(self):
@@ -72,13 +73,13 @@ class InstantiationTests(base.NectarTests):
         self.assertRaises(ValueError, DownloaderConfig, max_concurrent=-1)
 
     def test_ssl_data_config_value(self):
-        ca_cert_value = 'test cert'
+        ca_cert_value = b'test cert'
         config = DownloaderConfig(ssl_ca_cert=ca_cert_value)
 
         # temporary file created
         self.assertTrue(os.path.exists(config.ssl_ca_cert_path))
         # same contents as data value
-        self.assertEqual(ca_cert_value, open(config.ssl_ca_cert_path).read())
+        self.assertEqual(ca_cert_value, open(config.ssl_ca_cert_path).read().encode('latin-1'))
 
         config.finalize()
 

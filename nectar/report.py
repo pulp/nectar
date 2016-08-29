@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from builtins import object
+
 from datetime import datetime
 from gettext import gettext as _
 

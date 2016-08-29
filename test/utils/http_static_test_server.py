@@ -2,12 +2,16 @@
 """
 HTTP test server for writing tests against an "external" server.
 """
+from future import standard_library
+from builtins import object
 
 import atexit
 import socket
 import threading
-from BaseHTTPServer import HTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+from http.server import HTTPServer
+from http.server import SimpleHTTPRequestHandler
+
+standard_library.install_aliases()
 
 
 class HTTPServerIPV6(HTTPServer):
