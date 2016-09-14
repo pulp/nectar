@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from future import standard_library
+from builtins import str
+
 import datetime
 import os
 import shutil
 import tempfile
-from StringIO import StringIO
+from io import StringIO
 import unittest
 
 import mock
@@ -17,6 +20,7 @@ from nectar.request import DownloadRequest
 
 import base
 
+standard_library.install_aliases()
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 DATA_FILES = ['100K_file', '500K_file', '1M_file']
@@ -30,7 +34,7 @@ class InstantiationTests(base.NectarTests):
         try:
             local.LocalFileDownloader(config)
 
-        except Exception, e:
+        except Exception as e:
             self.fail(str(e))
 
     def test_progress_interval(self):
@@ -167,12 +171,12 @@ class GoodDownloadTests(DownloadTests):
         self.assertEqual(src_stat.st_size, dst_stat.st_size)
         self.assertNotEqual(src_stat.st_ino, dst_stat.st_ino)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('builtins.open')
     @mock.patch('nectar.report.DownloadReport.download_canceled')
     def test_copy_canceled(self, mock_canceled, mock_open):
         downloader = local.LocalFileDownloader(DownloaderConfig())
         downloader.cancel()
-        request = DownloadRequest('file://' + __file__, '/bar')
+        request = DownloadRequest('file://' + __file__, '/tmp/test')
 
         downloader._copy(request)
 
@@ -181,11 +185,11 @@ class GoodDownloadTests(DownloadTests):
         # make sure the no writing was attempted
         self.assertEqual(mock_open.return_value.write.call_count, 0)
 
-    @mock.patch('__builtin__.open')
+    @mock.patch('builtins.open')
     @mock.patch('nectar.report.DownloadReport.download_canceled')
     def test_copy_canceled_single_request(self, mock_canceled, mock_open):
         downloader = local.LocalFileDownloader(DownloaderConfig())
-        request = DownloadRequest('file://' + __file__, '/bar')
+        request = DownloadRequest('file://' + __file__, '/tmp/test')
         request.canceled = True
 
         downloader._copy(request)
@@ -270,7 +274,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
-        debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
+        debug_messages = ''.join([str(mock_call[1][0]) for mock_call in mock_logger.debug.mock_calls])  # noqa: E501
         self.assertTrue('No such file or directory' in debug_messages)
         self.assertEqual(mock_logger.exception.call_count, 0)
 
@@ -291,7 +295,7 @@ class BadDownloadTests(DownloadTests):
         self.assertEqual(len(listener.succeeded_reports), 0)
         self.assertEqual(len(listener.failed_reports), 1)
 
-        debug_messages = ''.join([mock_call[1][0][1] for mock_call in mock_logger.debug.mock_calls])
+        debug_messages = ''.join([str(mock_call[1][0]) for mock_call in mock_logger.debug.mock_calls])  # noqa: E501
         self.assertTrue('No such file or directory' in debug_messages)
         self.assertEqual(mock_logger.exception.call_count, 0)
 

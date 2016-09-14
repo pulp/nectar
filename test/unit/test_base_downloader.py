@@ -1,4 +1,5 @@
-from cStringIO import StringIO
+from future import standard_library
+from io import StringIO
 import unittest
 
 from nectar.config import DownloaderConfig
@@ -6,6 +7,8 @@ from nectar.downloaders.base import Downloader
 from nectar.listener import AggregatingEventListener
 from nectar.report import DownloadReport
 from nectar.request import DownloadRequest
+
+standard_library.install_aliases()
 
 
 class TestDownloadOne(unittest.TestCase):

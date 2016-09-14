@@ -1,13 +1,21 @@
-from cStringIO import StringIO
+from future import standard_library
+from builtins import zip
+from builtins import range
+from io import StringIO
 import datetime
-import httplib
+import http.client
 import os
 import random
 import shutil
 import string
 import tempfile
 import unittest
-import urllib
+from six.moves import urllib
+
+try:
+    from urllib import splithost, splittype
+except ImportError:
+    from urllib.parse import splithost, splittype
 
 import mock
 from requests import Response, ConnectionError, Timeout
@@ -19,6 +27,8 @@ from nectar.config import DownloaderConfig
 from nectar.downloaders import threaded
 from nectar.report import DownloadReport
 from nectar.request import DownloadRequest
+
+standard_library.install_aliases()
 
 
 class InstantiationTests(base.NectarTests):
@@ -121,7 +131,7 @@ class InstantiationTests(base.NectarTests):
                   'proxy_port': 1234,
                   'proxy_username': 'anon?ymous',
                   'proxy_password': 'anonymous$'}
-        proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
+        proxy_host = splithost(splittype(kwargs['proxy_url'])[1])[0]
 
         cfg = config.DownloaderConfig(**kwargs)
         session = threaded.build_session(cfg)
@@ -140,12 +150,12 @@ class InstantiationTests(base.NectarTests):
                          (kwargs['ssl_client_cert_path'], kwargs['ssl_client_key_path']))
         # test proxy username and passwod are url encoded before sending the request
         self.assertEqual(session.proxies,
-                         {'http': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
-                                                           urllib.quote(kwargs['proxy_password']),
+                         {'http': 'https://%s:%s@%s:%d' % (urllib.parse.quote(kwargs['proxy_username']),  # noqa: E501
+                                                           urllib.parse.quote(kwargs['proxy_password']),  # noqa: E501
                                                            proxy_host,
                                                            kwargs['proxy_port']),
-                          'https': 'https://%s:%s@%s:%d' % (urllib.quote(kwargs['proxy_username']),
-                                                            urllib.quote(kwargs['proxy_password']),
+                          'https': 'https://%s:%s@%s:%d' % (urllib.parse.quote(kwargs['proxy_username']),  # noqa: E501
+                                                            urllib.parse.quote(kwargs['proxy_password']),  # noqa: E501
                                                             proxy_host,
                                                             kwargs['proxy_port'])})
 
@@ -160,7 +170,7 @@ class InstantiationTests(base.NectarTests):
                   'proxy_port': 1234,
                   'proxy_username': '',
                   'proxy_password': ''}
-        proxy_host = urllib.splithost(urllib.splittype(kwargs['proxy_url'])[1])[0]
+        proxy_host = splithost(splittype(kwargs['proxy_url'])[1])[0]
 
         cfg = config.DownloaderConfig(**kwargs)
         session = threaded.build_session(cfg)
@@ -316,8 +326,8 @@ class TestFetch(unittest.TestCase):
         URL = 'http://fakeurl/robots.txt'
         req = DownloadRequest(URL, StringIO(), headers={'pulp_header': 'awesome!'})
         response = Response()
-        response.status_code = httplib.OK
-        response.raw = StringIO('abc')
+        response.status_code = http.client.OK
+        response.raw = StringIO(u'abc')
         self.session.get = mock.MagicMock(return_value=response, spec_set=self.session.get)
 
         self.downloader._fetch(req)
@@ -346,9 +356,9 @@ class TestFetch(unittest.TestCase):
         URL = 'http://fakeurl/robots.txt'
         req = DownloadRequest(URL, StringIO(), headers={'pulp_header': 'awesome!'})
         response = Response()
-        response.status_code = httplib.OK
+        response.status_code = http.client.OK
         response.headers = {'content-length': '1024'}
-        response.raw = StringIO('abc')
+        response.raw = StringIO(u'abc')
         self.session.get.return_value = response
 
         report = self.downloader._fetch(req)
@@ -359,8 +369,8 @@ class TestFetch(unittest.TestCase):
         URL = 'http://fakeurl/primary.xml.gz'
         req = DownloadRequest(URL, StringIO())
         response = Response()
-        response.status_code = httplib.OK
-        response.raw = StringIO('abc')
+        response.status_code = http.client.OK
+        response.raw = StringIO(u'abc')
         self.session.get.return_value = response
 
         report = self.downloader._fetch(req)
@@ -376,7 +386,7 @@ class TestFetch(unittest.TestCase):
         URL = 'http://fakeurl/primary.xml'
         req = DownloadRequest(URL, StringIO())
         response = Response()
-        response.status_code = httplib.OK
+        response.status_code = http.client.OK
         response.iter_content = mock.MagicMock(return_value=['abc'], spec_set=response.iter_content)
         self.session.get = mock.MagicMock(return_value=response, spec_set=self.session.get)
 
