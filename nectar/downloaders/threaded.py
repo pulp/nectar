@@ -341,11 +341,11 @@ class HTTPThreadedDownloader(Downloader):
             report.download_connection_error()
 
         except DownloadCancelled as e:
-            _logger.debug(str(e))
+            _logger.info(str(e))
             report.download_canceled()
 
         except DownloadFailed as e:
-            _logger.debug('download failed: %s' % str(e))
+            _logger.info('Download failed: %s' % str(e))
             report.error_msg = e.args[2]
             report.error_report['response_code'] = e.args[1]
             report.error_report['response_msg'] = e.args[2]
@@ -357,6 +357,9 @@ class HTTPThreadedDownloader(Downloader):
             report.download_failed()
 
         else:
+            _logger.info("Download succeeded: {url}.".format(
+                url=request.url)
+            )
             report.download_succeeded()
 
         request.finalize_file_handle()

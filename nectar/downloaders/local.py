@@ -158,7 +158,7 @@ class LocalFileDownloader(Downloader):
                 last_progress_update = now
 
         except IOError, e:
-            logger.debug(e)
+            logger.info(e)
             report.error_msg = str(e)
             report.download_failed()
         except Exception, e:
@@ -167,6 +167,7 @@ class LocalFileDownloader(Downloader):
             report.download_failed()
 
         else:
+            logger.info("Download succeeded: {url}.".format(url=request.url))
             report.download_succeeded()
 
         finally:
@@ -211,7 +212,7 @@ class LocalFileDownloader(Downloader):
             report.bytes_downloaded = os.path.getsize(request.destination)
 
         except OSError, e:
-            logger.debug(e)
+            logger.info(e)
             report.error_msg = str(e)
             report.download_failed()
         except Exception, e:
@@ -220,6 +221,7 @@ class LocalFileDownloader(Downloader):
             report.download_failed()
 
         else:
+            logger.info("Download succeeded: {url}.".format(url=request.url))
             report.download_succeeded()
 
         return report
