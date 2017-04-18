@@ -97,7 +97,6 @@ class HTTPThreadedDownloader(Downloader):
             session.mount('https://', adapter)
 
         self.session = session
-        self.session.stream = True
 
     @property
     def buffer_size(self):
@@ -160,6 +159,7 @@ class HTTPThreadedDownloader(Downloader):
                                          host=parsed_url.host, port=config.proxy_port)
             requests_kwargs['proxies'] = {'http': parsed_url.url, 'https': parsed_url.url}
 
+        requests_kwargs['stream'] = True # required for reading the download in chunks
         return requests_kwargs
 
     def worker(self, queue):
