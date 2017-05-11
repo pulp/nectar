@@ -132,7 +132,8 @@ class HTTPThreadedDownloader(Downloader):
         if config.basic_auth_username and config.basic_auth_password:
             requests_kwargs['auth'] = (config.basic_auth_username, config.basic_auth_password)
 
-        # Configure verification of the server's TLS certificates; defaults to the system trust store.
+        # Configure verification of the server's TLS certificates;
+        # defaults to the system trust store.
         if config.ssl_validation is not False:
             if config.ssl_ca_cert_path:
                 requests_kwargs['verify'] = config.ssl_ca_cert_path
@@ -159,7 +160,7 @@ class HTTPThreadedDownloader(Downloader):
                                          host=parsed_url.host, port=config.proxy_port)
             requests_kwargs['proxies'] = {'http': parsed_url.url, 'https': parsed_url.url}
 
-        requests_kwargs['stream'] = True # required for reading the download in chunks
+        requests_kwargs['stream'] = True  # required for reading the download in chunks
         return requests_kwargs
 
     def worker(self, queue):
@@ -249,7 +250,8 @@ class HTTPThreadedDownloader(Downloader):
         :return:    download report
         :rtype:     nectar.report.DownloadReport
         """
-        headers = (request.headers or {}).copy()
+        headers = (self.config.headers or {}).copy()
+        headers.update(request.headers or {})
         ignore_encoding, additional_headers = self._rfc2616_workaround(request)
         headers.update(additional_headers or {})
         max_speed = self._calculate_max_speed()  # None or integer in bytes/second
