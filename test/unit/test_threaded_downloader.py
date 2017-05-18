@@ -47,7 +47,8 @@ class InstantiationTests(base.NectarTests):
             ssl_client_cert_path='/tmp/cert.pem',
             ssl_client_key_path='/tmp/key.pem',
         )
-        expected_kwargs = {'verify': '/tmp/CA.pem', 'cert': ('/tmp/cert.pem', '/tmp/key.pem')}
+        expected_kwargs = {'verify': '/tmp/CA.pem', 'stream': True,
+                           'cert': ('/tmp/cert.pem', '/tmp/key.pem')}
 
         actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
         self.assertEqual(expected_kwargs, actual)
@@ -58,7 +59,7 @@ class InstantiationTests(base.NectarTests):
         and handles a missing password properly.
         """
         nectar_config = DownloaderConfig()
-        expected_kwargs = {'verify': True}
+        expected_kwargs = {'verify': True, 'stream': True}
 
         actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
         self.assertEqual(expected_kwargs, actual)
@@ -68,7 +69,7 @@ class InstantiationTests(base.NectarTests):
         Test that requests_kwargs_from_nectar_config creates an `auth` kwarg for basic auth.
         """
         nectar_config = DownloaderConfig(basic_auth_username='test', basic_auth_password='hunter2')
-        expected_kwargs = {'verify': True, 'auth': ('test', 'hunter2')}
+        expected_kwargs = {'verify': True, 'stream': True, 'auth': ('test', 'hunter2')}
 
         actual = threaded.HTTPThreadedDownloader.requests_kwargs_from_nectar_config(nectar_config)
         self.assertEqual(expected_kwargs, actual)
@@ -80,6 +81,7 @@ class InstantiationTests(base.NectarTests):
         nectar_config = DownloaderConfig(proxy_url='http://proxy.example.com', proxy_port=3128)
         expected_kwargs = {
             'verify': True,
+            'stream': True,
             'proxies': {
                 'http': 'http://proxy.example.com:3128',
                 'https': 'http://proxy.example.com:3128',
@@ -100,6 +102,7 @@ class InstantiationTests(base.NectarTests):
         expected_kwargs = {
             'verify': True,
             'auth': ('test', 'hunter2'),
+            'stream': True,
             'proxies': {
                 'http': 'http://proxy_user:test@123@proxy.example.com:3128',
                 'https': 'http://proxy_user:test@123@proxy.example.com:3128',
@@ -306,7 +309,7 @@ class LiveDownloadingTests(base.NectarTests):
 
 class TestFetch(unittest.TestCase):
     def setUp(self):
-        self.config = config.DownloaderConfig()
+        self.config = config.DownloaderConfig(headers={'X-RHUI-ID': '1234'})
         self.listener = listener.AggregatingEventListener()
         self.session = mock.Mock()
         self.downloader = threaded.HTTPThreadedDownloader(self.config, self.listener,
@@ -324,9 +327,9 @@ class TestFetch(unittest.TestCase):
 
         self.session.get.assert_called_once_with(
             URL,
-            headers={'pulp_header': 'awesome!'},
+            headers={'pulp_header': 'awesome!', 'X-RHUI-ID': '1234'},
             timeout=(self.config.connect_timeout, self.config.read_timeout),
-            verify=True,
+            verify=True, stream=True,
         )
 
     @mock.patch('nectar.downloaders.threaded.DownloadReport.from_download_request')
@@ -367,10 +370,10 @@ class TestFetch(unittest.TestCase):
 
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
-        self.session.get.assert_called_once_with(URL, headers={'accept-encoding': ''},
-                                                 timeout=(self.config.connect_timeout,
-                                                          self.config.read_timeout),
-                                                 verify=True)
+        self.session.get.assert_called_once_with(
+            URL, headers={'accept-encoding': '', 'X-RHUI-ID': '1234'},
+            timeout=(self.config.connect_timeout, self.config.read_timeout),
+            verify=True, stream=True)
 
     def test_normal_content_encoding(self):
         URL = 'http://fakeurl/primary.xml'
@@ -387,7 +390,8 @@ class TestFetch(unittest.TestCase):
         # passing "None" for headers lets the requests library add whatever
         # headers it thinks are appropriate.
         self.session.get.assert_called_once_with(
-            URL, headers={}, timeout=(self.config.connect_timeout, self.config.read_timeout), verify=True)
+            URL, timeout=(self.config.connect_timeout, self.config.read_timeout),
+            verify=True, stream=True, headers={'X-RHUI-ID': '1234'})
 
     def test_fetch_with_connection_error(self):
         """
