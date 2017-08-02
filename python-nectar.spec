@@ -7,7 +7,7 @@
 %global git_tag %{name}-%{version}-%{release_number}
 
 Name:           python-nectar
-Version:        1.5.4
+Version:        1.5.5
 Release:        1%{?dist}
 Summary:        A download library that separates workflow from implementation details
 
@@ -51,6 +51,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
+* Wed Aug 02 2017 Ina Panova <ipanova@redhat.com> 1.5.5-1
+- Update spec files Source0 (zhunting@redhat.com)
+- Update nectar to also read headers from config (bihan.zh@gmail.com)
+
 * Fri Apr 21 2017 Ina Panova <ipanova@redhat.com> 1.5.4-1
 - Re-enable request streaming (alex@linfratech.co.uk)
 - Better logging at INFO level for downloads (daviddavis@redhat.com)
