@@ -172,10 +172,7 @@ class DownloaderConfig(object):
                 data_arg_os_handle, file_arg_value = tempfile.mkstemp(dir=self.working_dir,
                                                                       prefix=prefix)
 
-                try:
-                    os.write(data_arg_os_handle, data_arg_value)
-                except UnicodeEncodeError:
-                    os.write(data_arg_os_handle, data_arg_value.encode('ascii', 'replace'))
+                os.write(data_arg_os_handle, data_arg_value)
                 os.close(data_arg_os_handle)
 
                 self._temp_files.append(file_arg_value)
