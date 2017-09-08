@@ -165,14 +165,14 @@ class DownloaderConfig(object):
                     raise AttributeError('Cannot read file: %s' % file_arg_value)
 
                 with open(file_arg_value, 'r') as file_arg_handle:
-                    setattr(self, data_arg_name, file_arg_handle.read())
+                    setattr(self, data_arg_name, file_arg_handle.read().decode('utf-8'))
 
             elif file_arg_value is None:
                 prefix = 'nectar-%s-' % data_arg_name
                 data_arg_os_handle, file_arg_value = tempfile.mkstemp(dir=self.working_dir,
                                                                       prefix=prefix)
 
-                os.write(data_arg_os_handle, data_arg_value)
+                os.write(data_arg_os_handle, data_arg_value.encode('utf-8'))
                 os.close(data_arg_os_handle)
 
                 self._temp_files.append(file_arg_value)

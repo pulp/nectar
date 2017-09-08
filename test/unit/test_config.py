@@ -72,13 +72,13 @@ class InstantiationTests(base.NectarTests):
         self.assertRaises(ValueError, DownloaderConfig, max_concurrent=-1)
 
     def test_ssl_data_config_value(self):
-        ca_cert_value = 'test cert'
+        ca_cert_value = u'\xe9test cert'
         config = DownloaderConfig(ssl_ca_cert=ca_cert_value)
 
         # temporary file created
         self.assertTrue(os.path.exists(config.ssl_ca_cert_path))
         # same contents as data value
-        self.assertEqual(ca_cert_value, open(config.ssl_ca_cert_path).read())
+        self.assertEqual(ca_cert_value, open(config.ssl_ca_cert_path).read().decode('utf-8'))
 
         config.finalize()
 
@@ -89,8 +89,8 @@ class InstantiationTests(base.NectarTests):
         cert_file = os.path.join(self.data_dir, 'pki', 'bogus', 'cert.pem')
         key_file = os.path.join(self.data_dir, 'pki', 'bogus', 'key.pem')
 
-        cert_contents = open(cert_file).read()
-        key_contents = open(key_file).read()
+        cert_contents = open(cert_file).read().decode('utf-8')
+        key_contents = open(key_file).read().decode('utf-8')
 
         config = DownloaderConfig(ssl_client_cert_path=cert_file,
                                   ssl_client_key_path=key_file)
