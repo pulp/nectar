@@ -19,7 +19,7 @@ class DownloaderConfig(object):
             ssl_validation=True, proxy_url=None, proxy_port=None, proxy_username=None,
             proxy_password=None, max_speed=None, headers=None, buffer_size=None,
             progress_interval=None, use_hard_links=False, use_sym_links=False,
-            connect_timeout=6.05, read_timeout=27, working_dir="/tmp"):
+            connect_timeout=6.05, read_timeout=27, working_dir="/tmp", stream=False):
         """
         Initialize the DownloaderConfig. All parameters are optional. Not all downloaders use each
         of the configuration items, so for each parameter documented below, the downloaders that
@@ -103,6 +103,9 @@ class DownloaderConfig(object):
 
         :param working_dir:          Working directory to store the ssl certificates
         :type working_dir:           str
+        :param stream:               If true, the raw response is returned. If false, a decoded
+                                     response is returned.
+        :type stream:                bool
         """
         self.max_concurrent = max_concurrent
         self.basic_auth_username = basic_auth_username
@@ -128,6 +131,7 @@ class DownloaderConfig(object):
         self.connect_timeout = connect_timeout
         self.read_timeout = read_timeout
         self.working_dir = working_dir
+        self.stream = stream
 
         # concurrency options
         self._process_concurrency()
