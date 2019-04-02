@@ -284,7 +284,7 @@ class HTTPThreadedDownloader(Downloader):
             last_update_time = datetime.datetime.now()
             self.fire_download_progress(report)
 
-            if ignore_encoding:
+            if ignore_encoding or self.config.stream:
                 chunks = self.chunk_generator(response.raw, self.buffer_size)
             else:
                 chunks = response.iter_content(self.buffer_size)
