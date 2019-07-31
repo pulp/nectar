@@ -90,7 +90,8 @@ class HTTPThreadedDownloader(Downloader):
 
         if not session:
             session = requests.Session()
-            retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1)
+            retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1,
+                                     status_forcelist=[429])
             retry_conf.BACKOFF_MAX = 8
             adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
             session.mount('http://', adapter)
