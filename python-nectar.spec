@@ -7,7 +7,7 @@
 %global git_tag %{name}-%{version}-%{release_number}
 
 Name:           python-nectar
-Version:        1.5.6
+Version:        1.6.1
 Release:        1%{?dist}
 Summary:        A download library that separates workflow from implementation details
 
@@ -51,6 +51,13 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
+* Thu Sep 19 2019 Patrick Creech <pcreech@redhat.com> 1.6.1-1
+- Always retry on 429 response, even without a retry-after header
+  (twaugh@redhat.com)
+
+* Mon Apr 08 2019 Patrick Creech <pcreech@redhat.com> - 1.6.0-1
+- Problem: downloader can't be configured to NOT decode (dkliban@redhat.com)
+
 * Wed Oct 18 2017 Ina Panova <ipanova@redhat.com> 1.5.6-1
 - UnicodeEncodeError in comments provided with SSL cert/key/CA
   (ammaransari004@gmail.com)
