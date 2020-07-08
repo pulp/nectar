@@ -1,5 +1,4 @@
 import datetime
-import errno
 import httplib
 import threading
 import time
@@ -7,8 +6,6 @@ import urllib
 import urlparse
 from gettext import gettext as _
 from logging import getLogger
-
-from OpenSSL.SSL import SysCallError
 
 import requests
 from requests.packages.urllib3.util import retry, url as urllib3_url
@@ -91,16 +88,15 @@ class HTTPThreadedDownloader(Downloader):
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
 
-        if not session:
-            session = requests.Session()
-            retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1,
-                                     status_forcelist=[429])
-            retry_conf.BACKOFF_MAX = 8
-            adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
-            session.mount('http://', adapter)
-            session.mount('https://', adapter)
-
-        self.session = session
+    def _make_session(self):
+        session = requests.Session()
+        retry_conf = retry.Retry(total=self.tries, connect=self.tries,
+                                 read=self.tries, backoff_factor=1,
+                                 status_forcelist=[429])
+        retry_conf.BACKOFF_MAX = 8
+        adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
 
     @property
     def buffer_size(self):
@@ -178,7 +174,8 @@ class HTTPThreadedDownloader(Downloader):
                 request = queue.get()
                 if request is None or self.is_canceled:
                     break
-                self._fetch(request)
+                session = self._make_session()
+                self._fetch(session, request)
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
             _logger.exception(msg)
@@ -245,43 +242,7 @@ class HTTPThreadedDownloader(Downloader):
         """
         return self._fetch(request)
 
-    def _retryable_get(self, get_args, get_kwargs, retries=DEFAULT_TRIES, backoff=0.3):
-        """
-        Do requests get with configured session. Retries on connection error
-
-        :param get_args:    requests.session.get positional args
-        :type  get_args:    list
-
-        :param get_kwargs:  requests.session.get keyword arguments
-        :type  get_kwargs:  dict
-
-        :param retries:     number of retries
-        :type  retries:     int
-
-        :param backoff:     backoff factor for retries
-        :type  backoff:     float
-
-        :return:    requests response
-        :rtype:     requests.Response
-        """
-
-        tries = 0
-        while True:
-            try:
-                response = self.session.get(*get_args, **get_kwargs)
-            except SysCallError as e:
-                if e.args[0] != errno.ECONNRESET:
-                    raise(e)
-                _logger.exception(e)
-                if retries < 1:
-                    raise(e)
-                retries -= 1
-                tries += 1
-                time.sleep(backoff * pow(2, tries) - 1)
-            else:
-                return response
-
-    def _fetch(self, request):
+    def _fetch(self, request, session):
         """
         :param request: download request object with details about what to
                         download and where to put it
@@ -308,10 +269,10 @@ class HTTPThreadedDownloader(Downloader):
 
             _logger.debug("Attempting to connect to {url}.".format(url=request.url))
             requests_kwargs = self.requests_kwargs_from_nectar_config(self.config)
-            get_kwargs = dict(headers=headers, timeout=(self.config.connect_timeout,
-                                                        self.config.read_timeout))
-            get_kwargs.update(requests_kwargs)
-            response = self._retryable_get((request.url,), get_kwargs)
+            response = session.get(request.url, headers=headers,
+                                   timeout=(self.config.connect_timeout,
+                                            self.config.read_timeout),
+                                   **requests_kwargs)
             report.headers = response.headers
             self.fire_download_headers(report)
 
