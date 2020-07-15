@@ -88,16 +88,15 @@ class HTTPThreadedDownloader(Downloader):
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
 
-        if not session:
-            session = requests.Session()
-            retry_conf = retry.Retry(total=tries, connect=tries, read=tries, backoff_factor=1,
-                                     status_forcelist=[429])
-            retry_conf.BACKOFF_MAX = 8
-            adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
-            session.mount('http://', adapter)
-            session.mount('https://', adapter)
-
-        self.session = session
+    def _make_session(self):
+        session = requests.Session()
+        retry_conf = retry.Retry(total=self.tries, connect=self.tries,
+                                 read=self.tries, backoff_factor=1,
+                                 status_forcelist=[429])
+        retry_conf.BACKOFF_MAX = 8
+        adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
 
     @property
     def buffer_size(self):
@@ -175,7 +174,8 @@ class HTTPThreadedDownloader(Downloader):
                 request = queue.get()
                 if request is None or self.is_canceled:
                     break
-                self._fetch(request)
+                session = self._make_session()
+                self._fetch(session, request)
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
             _logger.exception(msg)
@@ -242,7 +242,7 @@ class HTTPThreadedDownloader(Downloader):
         """
         return self._fetch(request)
 
-    def _fetch(self, request):
+    def _fetch(self, request, session):
         """
         :param request: download request object with details about what to
                         download and where to put it
@@ -269,10 +269,10 @@ class HTTPThreadedDownloader(Downloader):
 
             _logger.debug("Attempting to connect to {url}.".format(url=request.url))
             requests_kwargs = self.requests_kwargs_from_nectar_config(self.config)
-            response = self.session.get(request.url, headers=headers,
-                                        timeout=(self.config.connect_timeout,
-                                                 self.config.read_timeout),
-                                        **requests_kwargs)
+            response = session.get(request.url, headers=headers,
+                                   timeout=(self.config.connect_timeout,
+                                            self.config.read_timeout),
+                                   **requests_kwargs)
             report.headers = response.headers
             self.fire_download_headers(report)
 
