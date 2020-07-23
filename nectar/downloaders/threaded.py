@@ -88,6 +88,7 @@ class HTTPThreadedDownloader(Downloader):
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
         self.session = session
+        self.extra_headers = {}
 
     def _make_session(self):
         session = requests.Session()
@@ -254,6 +255,7 @@ class HTTPThreadedDownloader(Downloader):
         """
         headers = (self.config.headers or {}).copy()
         headers.update(request.headers or {})
+        headers.update(self.extra_headers.copy())
         ignore_encoding, additional_headers = self._rfc2616_workaround(request)
         headers.update(additional_headers or {})
         max_speed = self._calculate_max_speed()  # None or integer in bytes/second
