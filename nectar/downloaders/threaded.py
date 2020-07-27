@@ -57,7 +57,7 @@ class HTTPThreadedDownloader(Downloader):
     HTTP, HTTPS and proxied download requests by the server.
     """
 
-    def __init__(self, config, event_listener=None, tries=DEFAULT_TRIES):
+    def __init__(self, config, event_listener=None, tries=DEFAULT_TRIES, session=None):
         """
         :param config: downloader configuration
         :type config: nectar.config.DownloaderConfig
@@ -66,6 +66,10 @@ class HTTPThreadedDownloader(Downloader):
         :param tries: total number of requests made to the remote server,
                       including first unsuccessful one
         :type tries: int
+        :param session: The requests Session to use when downloaded. If one
+                        is not provided, one will be created and used for the
+                        lifetime of this downloader.
+        :type  session: requests.Session
         """
 
         super(HTTPThreadedDownloader, self).__init__(config, event_listener)
@@ -83,6 +87,7 @@ class HTTPThreadedDownloader(Downloader):
 
         # set of locations that produced a connection error
         self.failed_netlocs = set([])
+        self.session = session
 
     def _make_session(self):
         session = requests.Session()
