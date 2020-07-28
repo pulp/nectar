@@ -176,7 +176,10 @@ class HTTPThreadedDownloader(Downloader):
                 request = queue.get()
                 if request is None or self.is_canceled:
                     break
-                session = self._make_session()
+                if not self.session:
+                    session = self._make_session()
+                else:
+                    session = self.session
                 self._fetch(session, request)
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
