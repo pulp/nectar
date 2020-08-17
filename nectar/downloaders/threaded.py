@@ -97,6 +97,7 @@ class HTTPThreadedDownloader(Downloader):
         adapter = requests.adapters.HTTPAdapter(max_retries=retry_conf)
         session.mount('http://', adapter)
         session.mount('https://', adapter)
+        return session
 
     @property
     def buffer_size(self):
@@ -175,7 +176,7 @@ class HTTPThreadedDownloader(Downloader):
                 if request is None or self.is_canceled:
                     break
                 session = self._make_session()
-                self._fetch(session, request)
+                self._fetch(request, session)
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
             _logger.exception(msg)
@@ -240,13 +241,17 @@ class HTTPThreadedDownloader(Downloader):
         :return:    download report
         :rtype:     nectar.report.DownloadReport
         """
-        return self._fetch(request)
+        session = self._make_session()
+        return self._fetch(request, session)
 
     def _fetch(self, request, session):
         """
         :param request: download request object with details about what to
                         download and where to put it
         :type  request: nectar.request.DownloadRequest
+
+        :param request: requests.Session instance
+        :type  request: requests.Session
 
         :return:    download report
         :rtype:     nectar.report.DownloadReport
