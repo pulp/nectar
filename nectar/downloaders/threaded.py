@@ -22,6 +22,7 @@ DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192  # bytes
 DEFAULT_PROGRESS_INTERVAL = 5  # seconds
 DEFAULT_TRIES = 5
+DEFAULT_GENERIC_TRIES = 3
 
 ONE_SECOND = datetime.timedelta(seconds=1)
 
@@ -273,7 +274,7 @@ class HTTPThreadedDownloader(Downloader):
         report.download_started()
         self.fire_download_started(report)
         netloc = urlparse.urlparse(request.url).netloc
-        for nretry in range(DEFAULT_TRIES):
+        for nretry in range(DEFAULT_GENERIC_TRIES):
             try:
                 if self.is_canceled or request.canceled:
                     raise DownloadCancelled(request.url)
@@ -342,7 +343,7 @@ class HTTPThreadedDownloader(Downloader):
                 report.download_skipped()
 
             except requests.ConnectionError as e:
-                if nretry < DEFAULT_TRIES - 1:
+                if nretry < DEFAULT_GENERIC_TRIES - 1 and not response.status_code:
                     continue
                 _logger.error(_('Skipping requests to {netloc} due to repeated connection'
                                 ' failures: {e}').format(netloc=netloc, e=str(e)))
@@ -350,8 +351,6 @@ class HTTPThreadedDownloader(Downloader):
                 report.download_connection_error()
 
             except requests.Timeout:
-                if nretry < DEFAULT_TRIES - 1:
-                    continue
                 """
                 Handle a timeout differently than a connection error. Do not add
                 to failed_netlocs so that a new connection can be attempted.
@@ -375,7 +374,7 @@ class HTTPThreadedDownloader(Downloader):
                 report.download_failed()
 
             except Exception as e:
-                if nretry < DEFAULT_TRIES - 1:
+                if nretry < DEFAULT_GENERIC_TRIES - 1:
                     continue
                 _logger.exception(e)
                 report.error_msg = str(e)
