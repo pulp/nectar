@@ -343,6 +343,7 @@ class HTTPThreadedDownloader(Downloader):
                 report.download_skipped()
 
             except requests.ConnectionError as e:
+                # retry only if there's indication of connection reset
                 if nretry < DEFAULT_GENERIC_TRIES - 1 and not response.status_code:
                     continue
                 _logger.error(_('Skipping requests to {netloc} due to repeated connection'
@@ -365,7 +366,8 @@ class HTTPThreadedDownloader(Downloader):
                 report.download_canceled()
 
             except DownloadFailed as e:
-                if nretry < DEFAULT_TRIES - 1:
+                # retry only if there's indication of connection reset
+                if nretry < DEFAULT_TRIES - 1 and not response.status_code:
                     continue
                 _logger.info('Download failed: %s' % str(e))
                 report.error_msg = e.args[2]
