@@ -443,7 +443,7 @@ class TestFetch(unittest.TestCase):
             report2 = self.downloader._fetch(req, self.session)
 
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
-            self.assertEqual(self.session.get.call_count, 10)
+            self.assertEqual(self.session.get.call_count, 2)
 
             expected_log_message = "Request Timeout - Connection with " \
                                    "http://fakeurl/primary.xml timed out."
