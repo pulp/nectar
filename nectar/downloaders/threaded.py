@@ -367,7 +367,7 @@ class HTTPThreadedDownloader(Downloader):
 
             except DownloadFailed as e:
                 # retry only if there's indication of connection reset
-                if nretry < DEFAULT_TRIES - 1 and not response.status_code:
+                if nretry < DEFAULT_GENERICTRIES - 1 and not response.status_code:
                     continue
                 _logger.info('Download failed: %s' % str(e))
                 report.error_msg = e.args[2]
