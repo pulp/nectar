@@ -1,4 +1,5 @@
 import datetime
+import errno
 import httplib
 import threading
 import time
@@ -22,6 +23,7 @@ DEFAULT_MAX_CONCURRENT = 5
 DEFAULT_BUFFER_SIZE = 8192  # bytes
 DEFAULT_PROGRESS_INTERVAL = 5  # seconds
 DEFAULT_TRIES = 5
+DEFAULT_GENERIC_TRIES = 3
 
 ONE_SECOND = datetime.timedelta(seconds=1)
 
@@ -182,7 +184,7 @@ class HTTPThreadedDownloader(Downloader):
                     session = self._make_session()
                 else:
                     session = self.session
-                self._fetch(session, request)
+                self._fetch(request, session)
 
         except:
             msg = _('Unhandled Exception in Worker Thread [%s]') % threading.currentThread().ident
@@ -273,119 +275,126 @@ class HTTPThreadedDownloader(Downloader):
         report.download_started()
         self.fire_download_started(report)
         netloc = urlparse.urlparse(request.url).netloc
-        try:
-            if self.is_canceled or request.canceled:
-                raise DownloadCancelled(request.url)
-
-            if netloc in self.failed_netlocs:
-                raise SkipLocation()
-
-            _logger.debug("Attempting to connect to {url}.".format(url=request.url))
-            requests_kwargs = self.requests_kwargs_from_nectar_config(self.config)
-            response = session.get(request.url, headers=headers,
-                                   timeout=(self.config.connect_timeout,
-                                            self.config.read_timeout),
-                                   **requests_kwargs)
-            report.headers = response.headers
-            self.fire_download_headers(report)
-
-            if response.status_code != httplib.OK:
-                raise DownloadFailed(request.url, response.status_code, response.reason)
-
-            progress_interval = self.progress_interval
-            file_handle = request.initialize_file_handle()
-
-            last_update_time = datetime.datetime.now()
-            self.fire_download_progress(report)
-
-            if ignore_encoding or self.config.stream:
-                chunks = self.chunk_generator(response.raw, self.buffer_size)
-            else:
-                chunks = response.iter_content(self.buffer_size)
-
-            for chunk in chunks:
+        for nretry in range(DEFAULT_GENERIC_TRIES):
+            try:
                 if self.is_canceled or request.canceled:
                     raise DownloadCancelled(request.url)
 
-                file_handle.write(chunk)
+                if netloc in self.failed_netlocs:
+                    raise SkipLocation()
 
-                bytes_read = len(chunk)
-                report.bytes_downloaded += bytes_read
+                _logger.debug("Attempting to connect to {url}.".format(url=request.url))
+                requests_kwargs = self.requests_kwargs_from_nectar_config(self.config)
+                response = session.get(request.url, headers=headers,
+                                       timeout=(self.config.connect_timeout,
+                                                self.config.read_timeout),
+                                       **requests_kwargs)
+                report.headers = response.headers
+                self.fire_download_headers(report)
 
-                now = datetime.datetime.now()
+                if response.status_code != httplib.OK:
+                    raise DownloadFailed(request.url, response.status_code, response.reason)
 
-                if now - last_update_time >= progress_interval:
-                    last_update_time = now
-                    self.fire_download_progress(report)
+                progress_interval = self.progress_interval
+                file_handle = request.initialize_file_handle()
 
-                with self._bytes_lock:
-                    if now - self._time_bytes_this_second_was_cleared >= ONE_SECOND:
-                        self._bytes_this_second = 0
-                        self._time_bytes_this_second_was_cleared = now
-                    self._bytes_this_second += bytes_read
+                last_update_time = datetime.datetime.now()
+                self.fire_download_progress(report)
 
-                if max_speed is not None and self._bytes_this_second >= max_speed:
-                    # it's not worth doing fancier mathematics than this, very
-                    # fine-grained sleep times [1] are not honored by the system
-                    # [1] for example, sleeping the remaining fraction of time
-                    # before this second is up
-                    time.sleep(0.5)
+                if ignore_encoding or self.config.stream:
+                    chunks = self.chunk_generator(response.raw, self.buffer_size)
+                else:
+                    chunks = response.iter_content(self.buffer_size)
 
-            # guarantee 1 report at the end
-            self.fire_download_progress(report)
+                for chunk in chunks:
+                    if self.is_canceled or request.canceled:
+                        raise DownloadCancelled(request.url)
 
-        except SkipLocation:
-            _logger.debug("Skipping {url} because {netloc} could not be reached.".format(
-                url=request.url, netloc=netloc)
-            )
-            report.download_skipped()
+                    file_handle.write(chunk)
 
-        except requests.ConnectionError as e:
-            _logger.error(_('Skipping requests to {netloc} due to repeated connection'
-                            ' failures: {e}').format(netloc=netloc, e=str(e)))
-            self.failed_netlocs.add(netloc)
-            report.download_connection_error()
+                    bytes_read = len(chunk)
+                    report.bytes_downloaded += bytes_read
 
-        except requests.Timeout:
-            """
-            Handle a timeout differently than a connection error. Do not add
-            to failed_netlocs so that a new connection can be attempted.
-            """
-            _logger.warning("Request Timeout - Connection with {url} timed out.".format(
-                url=request.url)
-            )
-            report.download_connection_error()
+                    now = datetime.datetime.now()
 
-        except DownloadCancelled as e:
-            _logger.info(str(e))
-            report.download_canceled()
+                    if now - last_update_time >= progress_interval:
+                        last_update_time = now
+                        self.fire_download_progress(report)
 
-        except DownloadFailed as e:
-            _logger.info('Download failed: %s' % str(e))
-            report.error_msg = e.args[2]
-            report.error_report['response_code'] = e.args[1]
-            report.error_report['response_msg'] = e.args[2]
-            report.download_failed()
+                    with self._bytes_lock:
+                        if now - self._time_bytes_this_second_was_cleared >= ONE_SECOND:
+                            self._bytes_this_second = 0
+                            self._time_bytes_this_second_was_cleared = now
+                        self._bytes_this_second += bytes_read
 
-        except Exception as e:
-            _logger.exception(e)
-            report.error_msg = str(e)
-            report.download_failed()
+                    if max_speed is not None and self._bytes_this_second >= max_speed:
+                        # it's not worth doing fancier mathematics than this, very
+                        # fine-grained sleep times [1] are not honored by the system
+                        # [1] for example, sleeping the remaining fraction of time
+                        # before this second is up
+                        time.sleep(0.5)
 
-        else:
-            _logger.info("Download succeeded: {url}.".format(
-                url=request.url)
-            )
-            report.download_succeeded()
+                # guarantee 1 report at the end
+                self.fire_download_progress(report)
 
-        request.finalize_file_handle()
+            except SkipLocation:
+                _logger.debug("Skipping {url} because {netloc} could not be reached.".format(
+                    url=request.url, netloc=netloc)
+                )
+                report.download_skipped()
 
-        if report.state is DOWNLOAD_SUCCEEDED:
-            self.fire_download_succeeded(report)
-        else:  # DOWNLOAD_FAILED
-            self.fire_download_failed(report)
+            except requests.ConnectionError as e:
+                # retry only if there's indication of connection reset
+                if nretry < DEFAULT_GENERIC_TRIES - 1:
+                    continue
+                _logger.error(_('Skipping requests to {netloc} due to repeated connection'
+                                ' failures: {e}').format(netloc=netloc, e=str(e)))
+                self.failed_netlocs.add(netloc)
+                report.download_connection_error()
 
-        return report
+            except requests.Timeout:
+                """
+                Handle a timeout differently than a connection error. Do not add
+                to failed_netlocs so that a new connection can be attempted.
+                """
+                _logger.warning("Request Timeout - Connection with {url} timed out.".format(
+                    url=request.url)
+                )
+                report.download_connection_error()
+
+            except DownloadCancelled as e:
+                _logger.info(str(e))
+                report.download_canceled()
+
+            except DownloadFailed as e:
+                # retry only if there's indication of connection reset
+                _logger.info('Download failed: %s' % str(e))
+                report.error_msg = e.args[2]
+                report.error_report['response_code'] = e.args[1]
+                report.error_report['response_msg'] = e.args[2]
+                report.download_failed()
+
+            except Exception as e:
+                if nretry < DEFAULT_GENERIC_TRIES - 1 and e.args[1] == errno.ECONNRESET:
+                    continue
+                _logger.exception(e)
+                report.error_msg = str(e)
+                report.download_failed()
+
+            else:
+                _logger.info("Download succeeded: {url}.".format(
+                    url=request.url)
+                )
+                report.download_succeeded()
+
+            request.finalize_file_handle()
+
+            if report.state is DOWNLOAD_SUCCEEDED:
+                self.fire_download_succeeded(report)
+            else:  # DOWNLOAD_FAILED
+                self.fire_download_failed(report)
+
+            return report
 
     @staticmethod
     def _rfc2616_workaround(request):

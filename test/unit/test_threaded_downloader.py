@@ -323,7 +323,7 @@ class TestFetch(unittest.TestCase):
         response.raw = StringIO('abc')
         self.session.get = mock.MagicMock(return_value=response, spec_set=self.session.get)
 
-        self.downloader._fetch(req)
+        self.downloader._fetch(req, self.session)
 
         self.session.get.assert_called_once_with(
             URL,
@@ -338,7 +338,7 @@ class TestFetch(unittest.TestCase):
         req = DownloadRequest(url, mock.Mock())
         req.canceled = True
 
-        self.downloader._fetch(req)
+        self.downloader._fetch(req, self.session)
         mock_from_request.return_value.download_canceled.assert_called_once_with()
 
     def test_response_headers(self):
@@ -354,7 +354,7 @@ class TestFetch(unittest.TestCase):
         response.raw = StringIO('abc')
         self.session.get.return_value = response
 
-        report = self.downloader._fetch(req)
+        report = self.downloader._fetch(req, self.session)
 
         self.assertEqual(report.headers['content-length'], '1024')
 
@@ -366,7 +366,7 @@ class TestFetch(unittest.TestCase):
         response.raw = StringIO('abc')
         self.session.get.return_value = response
 
-        report = self.downloader._fetch(req)
+        report = self.downloader._fetch(req, self.session)
 
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
@@ -383,7 +383,7 @@ class TestFetch(unittest.TestCase):
         response.iter_content = mock.MagicMock(return_value=['abc'], spec_set=response.iter_content)
         self.session.get = mock.MagicMock(return_value=response, spec_set=self.session.get)
 
-        report = self.downloader._fetch(req)
+        report = self.downloader._fetch(req, self.session)
 
         self.assertEqual(report.state, report.DOWNLOAD_SUCCEEDED)
         self.assertEqual(report.bytes_downloaded, 3)
@@ -407,14 +407,14 @@ class TestFetch(unittest.TestCase):
             req = DownloadRequest(URL, StringIO())
             self.session.get = connection_error
             try:
-                report = self.downloader._fetch(req)
+                report = self.downloader._fetch(req, self.session)
             except ConnectionError:
                 raise AssertionError("ConnectionError should be raised")
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
             self.assertIn('fakeurl', self.downloader.failed_netlocs)
 
-            report2 = self.downloader._fetch(req)
+            report2 = self.downloader._fetch(req, self.session)
 
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
 
@@ -433,17 +433,17 @@ class TestFetch(unittest.TestCase):
             URL = 'http://fakeurl/primary.xml'
             req = DownloadRequest(URL, StringIO())
             self.session.get.side_effect = Timeout
-            report = self.downloader._fetch(req)
+            report = self.downloader._fetch(req, self.session)
 
             self.assertEqual(report.state, report.DOWNLOAD_FAILED)
             self.assertNotIn('fakeurl', self.downloader.failed_netlocs)
 
             session2 = threaded.build_session(self.config)
             session2.get = mock.MagicMock()
-            report2 = self.downloader._fetch(req)
+            report2 = self.downloader._fetch(req, self.session)
 
             self.assertEqual(report2.state, report2.DOWNLOAD_FAILED)
-            self.assertEqual(self.session.get.call_count, 2)
+            self.assertEqual(self.session.get.call_count, 10)
 
             expected_log_message = "Request Timeout - Connection with " \
                                    "http://fakeurl/primary.xml timed out."
