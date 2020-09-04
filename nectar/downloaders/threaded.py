@@ -1,4 +1,5 @@
 import datetime
+import errno
 import httplib
 import threading
 import time
@@ -344,7 +345,7 @@ class HTTPThreadedDownloader(Downloader):
 
             except requests.ConnectionError as e:
                 # retry only if there's indication of connection reset
-                if nretry < DEFAULT_GENERIC_TRIES - 1 and not e.args[1]:
+                if nretry < DEFAULT_GENERIC_TRIES - 1:
                     continue
                 _logger.error(_('Skipping requests to {netloc} due to repeated connection'
                                 ' failures: {e}').format(netloc=netloc, e=str(e)))
@@ -367,8 +368,6 @@ class HTTPThreadedDownloader(Downloader):
 
             except DownloadFailed as e:
                 # retry only if there's indication of connection reset
-                if nretry < DEFAULT_GENERIC_TRIES - 1 and not e.args[1]:
-                    continue
                 _logger.info('Download failed: %s' % str(e))
                 report.error_msg = e.args[2]
                 report.error_report['response_code'] = e.args[1]
@@ -376,7 +375,7 @@ class HTTPThreadedDownloader(Downloader):
                 report.download_failed()
 
             except Exception as e:
-                if nretry < DEFAULT_GENERIC_TRIES - 1:
+                if nretry < DEFAULT_GENERIC_TRIES - 1 and e.args[1] == errno.ECONNRESET:
                     continue
                 _logger.exception(e)
                 report.error_msg = str(e)
