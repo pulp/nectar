@@ -7,7 +7,7 @@
 %global git_tag %{name}-%{version}-%{release_number}
 
 Name:           python-nectar
-Version:        1.6.1
+Version:        1.6.2
 Release:        1%{?dist}
 Summary:        A download library that separates workflow from implementation details
 
@@ -51,6 +51,17 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
+* Mon Sep 14 2020 Evgeni Golov 1.6.2-1
+- Fix timeout test. (ipanova@redhat.com)
+- Remove outdated comments. (ipanova@redhat.com)
+- Better retries for nectar which can handle interrupted connections (#72)
+  (jluza@redhat.com)
+- Added 'extra_headers' attribute as replacement for session.headers (#70)
+  (jluza@redhat.com)
+- Fixed missing return value in _get session reversed arguments order for
+  _fetch (jluza@redhat.com)
+- Do not share requests session within multiple threads (jluza@redhat.com)
+
 * Thu Sep 19 2019 Patrick Creech <pcreech@redhat.com> 1.6.1-1
 - Always retry on 429 response, even without a retry-after header
   (twaugh@redhat.com)
