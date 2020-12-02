@@ -1,5 +1,9 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from %distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
+%if 0%{?fedora} >= 33
+%define __python /usr/bin/python2
+%endif
+
 # The release number
 %global release_number 1
 
@@ -7,7 +11,7 @@
 %global git_tag %{name}-%{version}-%{release_number}
 
 Name:           python-nectar
-Version:        1.6.2
+Version:        1.6.3
 Release:        1%{?dist}
 Summary:        A download library that separates workflow from implementation details
 
@@ -51,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
+* Wed Dec 02 2020 Evgeni Golov 1.6.3-1
+- Fixed RST handling. (ipanova@redhat.com)
+
 * Mon Sep 14 2020 Evgeni Golov 1.6.2-1
 - Fix timeout test. (ipanova@redhat.com)
 - Remove outdated comments. (ipanova@redhat.com)
