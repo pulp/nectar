@@ -345,7 +345,7 @@ class HTTPThreadedDownloader(Downloader):
 
             except requests.ConnectionError as e:
                 # retry only if there's indication of connection reset
-                if nretry < DEFAULT_GENERIC_TRIES - 1 and e.args[0] == errno.ECONNRESET:
+                if nretry < DEFAULT_GENERIC_TRIES - 1 and e.args and e.args[0] == errno.ECONNRESET:
                     _logger.debug(_("Connection reset. Retrying to connect to {url}.".format(
                         url=request.url))
                     )
@@ -378,7 +378,7 @@ class HTTPThreadedDownloader(Downloader):
 
             except Exception as e:
                 # retry only if there's indication of connection reset
-                if nretry < DEFAULT_GENERIC_TRIES - 1 and e.args[0] == errno.ECONNRESET:
+                if nretry < DEFAULT_GENERIC_TRIES - 1 and e.args and e.args[0] == errno.ECONNRESET:
                     _logger.debug(_("Connection reset. Retrying to connect to {url}.".format(
                         url=request.url))
                     )
