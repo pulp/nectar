@@ -25,6 +25,8 @@ BuildArch:      noarch
 
 BuildRequires:  python-setuptools
 
+Provides:       python2-nectar
+Obsoletes:      python2-nectar < %{version}
 Requires:       python-isodate >= 0.4.9
 Requires:       python-requests >= 2.4.3
 
