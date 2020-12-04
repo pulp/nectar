@@ -11,7 +11,7 @@
 %global git_tag %{name}-%{version}-%{release_number}
 
 Name:           python-nectar
-Version:        1.6.3
+Version:        1.6.4
 Release:        1%{?dist}
 Summary:        A download library that separates workflow from implementation details
 
@@ -57,6 +57,10 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYRIGHT LICENSE.txt README.rst
 
 %changelog
+* Fri Dec 04 2020 Evgeni Golov 1.6.4-1
+- add provides and obsoletes on python2-nectar (evgeni@golov.de)
+- Check on the exception args. (ipanova@redhat.com)
+
 * Wed Dec 02 2020 Evgeni Golov 1.6.3-1
 - Fixed RST handling. (ipanova@redhat.com)
 
